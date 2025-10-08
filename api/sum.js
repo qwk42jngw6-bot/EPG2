@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
 
-  // Body robust einlesen (kein req.json() in diesem Umfeld)
+  // Body einlesen (kein req.json())
   const raw = await new Promise((resolve, reject) => {
     let buf = "";
     req.on("data", c => (buf += c));
@@ -20,8 +20,9 @@ export default async function handler(req, res) {
   catch { return res.status(400).json({ error: "Invalid JSON body" }); }
 
   const title = String(data.title || data.original || "").trim();
+  if (!title) return res.status(400).json({ error: "title missing" });
 
-  // → OpenAI call (nutzt ENV, nicht hardcoden!)
+  // OpenAI call – nutzt ENV!
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
