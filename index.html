@@ -6,33 +6,40 @@
 <title>EPG – Jetzt (Germany 2)</title>
 <style>
 :root{
-  --bg:#0a0a0a;--fg:#f5f5f5;--muted:#9aa;--card:#121212;--border:#232323;
-  --ok:#22c55e;--warn:#eab308
+  --bg:#0b0d10; --card:#12151a; --border:#1f232b;
+  --text:#e7ecf2; --muted:#9aa6b2;
+  --accent:#5eead4;   /* türkis für Titelzeiten */
+  --good:#86efac;     /* grün für Live-Titel */
+  --chip:#1a222d;     /* Chip-Hintergrund */
 }
-html,body{margin:0;background:var(--bg);color:var(--fg);
-  font-family:system-ui,Inter,Segoe UI,Roboto,sans-serif;font-size:15px}
-@media (max-width:480px){ html,body{font-size:14px} }
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font-family:system-ui,Segoe UI,Inter,Roboto,sans-serif;font-size:14px}
+@media (max-width:420px){html,body{font-size:13px}}
 
-header{padding:10px 12px;border-bottom:1px solid var(--border)}
-h1{margin:0;font-size:18px}
-.stamp{font-size:12px;color:#aaa;margin-top:4px}
+header{padding:12px 14px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,13,16,.92))}
+h1{margin:0 0 2px 0;font-size:18px;font-weight:800;letter-spacing:.2px}
+.stamp{font-size:12px;color:var(--muted)}
 
-.container{padding:10px}
+.container{padding:12px;max-width:1100px;margin:0 auto}
 .grid{display:grid;gap:10px}
-@media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1080px){.grid{grid-template-columns:repeat(3,1fr)}}
 
 .card{background:var(--card);border:1px solid var(--border);
-  border-radius:10px;padding:12px}
-
-.top{display:flex;gap:8px;align-items:baseline;justify-content:space-between;margin-bottom:6px}
-.no{color:#777;font-size:11px}
-.ch{font-weight:800;font-size:16px}      /* Sendername stärker hervorgehoben */
-.now{color:var(--ok);font-weight:600;font-size:14px} /* etwas kleiner als vorher */
-.warn{color:var(--warn);font-size:12px}
-.muted{color:var(--muted);font-size:12px}
-.rating{margin-top:6px;font-size:12px;color:#ddd}
-ul{padding-left:16px;margin:5px 0}
+  border-radius:12px;padding:12px;box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
+.no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+.ch{font-size:16px;font-weight:900;letter-spacing:.2px}
+.now{font-weight:700;color:var(--good)}
+.time{color:var(--accent)}
+.muted{color:var(--muted)}
+.warn{color:#facc15}
+ul{padding-left:16px;margin:6px 0}
+.rating{margin-top:6px;font-size:12px;color:#cbd5e1}
+.badge{display:inline-block;background:var(--chip);border:1px solid var(--border);
+  padding:2px 6px;border-radius:8px;margin-right:6px}
 </style>
 </head>
 <body>
@@ -40,9 +47,11 @@ ul{padding-left:16px;margin:5px 0}
   <h1>EPG – Jetzt</h1>
   <div id="stamp" class="stamp"></div>
 </header>
+
 <div class="container">
   <div id="root" class="grid"></div>
 </div>
+
 <script>
 const api="/api/now";
 const $=s=>document.querySelector(s);
@@ -50,19 +59,18 @@ const stamp=$("#stamp"),root=$("#root");
 const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
 function upcomingList(arr){
-  if(!arr||!arr.length)return'<div class="muted">Keine weiteren Sendungen (2 h).</div>';
-  const items=arr.map(p=>`<li>${p.title} <span class="muted">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("");
-  return `<div><strong>Nächste 2 Stunden:</strong><ul>${items}</ul></div>`;
+  if(!arr||!arr.length) return '<div class="muted">Keine weiteren Sendungen (2 h).</div>';
+  return `<div><span class="badge">Nächste 2 Stunden</span>
+    <ul>${arr.map(p=>`<li>${p.title} <span class="time">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("")}</ul></div>`;
 }
-
 function ratingBlock(r){
   if(!r) return "";
-  const parts=[];
-  if(r.gpt!=null) parts.push(`GPT-Score: ${r.gpt}/10`);
-  if(r.imdb!=null) parts.push(`IMDb: ${r.imdb}`);
-  if(r.rtUser!=null) parts.push(`RT-User: ${r.rtUser}%`);
-  if(r.rtCritic!=null) parts.push(`RT-Kritik: ${r.rtCritic}%`);
-  return parts.length? `<div class="rating">⭐ ${parts.join(" · ")}</div>` : "";
+  const chips=[];
+  if(r.gpt!=null) chips.push(`<span class="badge">GPT ${r.gpt}/10</span>`);
+  if(r.imdb!=null) chips.push(`<span class="badge">IMDb ${r.imdb}</span>`);
+  if(r.rtUser!=null) chips.push(`<span class="badge">RT-User ${r.rtUser}%</span>`);
+  if(r.rtCritic!=null) chips.push(`<span class="badge">RT-Kritik ${r.rtCritic}%</span>`);
+  return chips.length ? `<div class="rating">${chips.join("")}</div>` : "";
 }
 
 async function load(){
@@ -73,13 +81,12 @@ async function load(){
     stamp.textContent="Stand: "+new Date(j.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
     root.innerHTML="";
     for(const it of j.items){
-      const div=document.createElement("div");div.className="card";
+      const div=document.createElement("div"); div.className="card";
       const head=`<div class="top"><div class="ch">${it.channel}</div><span class="no">#${it.no}</span></div>`;
       if(!it.now){
         div.innerHTML=head+`<div class="warn">Kein aktuelles Programm gefunden</div>`;
       }else{
-        const when=it.now.start&&it.now.stop?` (${tt(it.now.start)}–${tt(it.now.stop)})`:"";
-        // KEIN "JETZT" Text – nur Titel + Zeit
+        const when = it.now.start && it.now.stop ? ` <span class="time">(${tt(it.now.start)}–${tt(it.now.stop)})</span>` : "";
         div.innerHTML=head+`<div class="now">${it.now.title}${when}</div>`+upcomingList(it.upcoming)+ratingBlock(it.rating);
       }
       root.appendChild(div);
