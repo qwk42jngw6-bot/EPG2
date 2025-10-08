@@ -1,28 +1,31 @@
-// /api/sum.js – Vercel Serverless (Node 18)
+// /api/sum.js – Vercel Serverless Function (Node 18+)
 export default async function handler(req, res) {
-  // CORS
+  // === CORS-Einstellungen ===
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
 
-  // Body einlesen (kein req.json())
+  // === Body einlesen (da req.json() hier nicht existiert) ===
   const raw = await new Promise((resolve, reject) => {
     let buf = "";
-    req.on("data", c => (buf += c));
+    req.on("data", chunk => (buf += chunk));
     req.on("end", () => resolve(buf));
     req.on("error", reject);
   });
 
   let data = {};
-  try { data = raw ? JSON.parse(raw) : {}; }
-  catch { return res.status(400).json({ error: "Invalid JSON body" }); }
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
+    return res.status(400).json({ error: "Invalid JSON body" });
+  }
 
   const title = String(data.title || data.original || "").trim();
   if (!title) return res.status(400).json({ error: "title missing" });
 
-  // OpenAI call – nutzt ENV!
+  // === Anfrage an OpenAI ===
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -35,8 +38,14 @@ export default async function handler(req, res) {
     })
   });
 
-  const json = await resp.json();
-  if (!resp.ok) return res.status(500).json({ error: json });
+  // === Fehlerausgabe verbessern ===
+  const out = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    return res.status(resp.status).json({
+      error: out.error || out || { message: "OpenAI call failed" }
+    });
+  }
 
-  return res.status(200).json({ summary: json.output_text ?? "" });
+  // === Erfolg ===
+  return res.status(200).json({ summary: out.output_text ?? "" });
 }
