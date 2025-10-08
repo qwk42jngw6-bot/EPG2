@@ -3,104 +3,86 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EPG – Jetzt (Germany 2)</title>
-
-<!-- Externes Design-Paket (ohne Build): Pico.css -->
-<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
+<title>EPG – Jetzt</title>
 <style>
-/* ==== Feinschliff auf Basis Pico (Apple-clean) ==== */
+/* Dunkles, cleanes UI – kein Header, nur Karten */
 :root{
-  --bg:#0c1015; --card:#111824; --card2:#0f1621; --border:#1d2735;
-  --text:#e8edf3; --muted:#9aa6b2;
-  --accent:#67e8f9; --live:#86efac;
-  --chip:#121a26;
+  --bg:#0b0f14; --card:#111822; --card2:#0f1621; --border:#1f2733;
+  --text:#e8edf3; --muted:#b1bdc9; --muted2:#8b98a6;
+  --accent:#67e8f9; --live:#86efac; --chip:#141b24;
   --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
 }
-:root, [data-theme="dark"]{
-  --pico-background-color: var(--bg);
-  --pico-color: var(--text);
-  --pico-muted-color: var(--muted);
-  --pico-card-background-color: var(--card);
-  --pico-border-color: var(--border);
-  --pico-form-element-background-color: var(--card2);
-}
-html,body{font-family:Inter, ui-sans-serif, -apple-system, "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;}
-.container{max-width:1120px;margin-inline:auto;padding:1rem 1rem 2.25rem;}
-header.header{
-  position:sticky; top:0; z-index:10;
-  backdrop-filter:saturate(180%) blur(8px);
-  background:linear-gradient(180deg, rgba(12,16,21,.9), rgba(12,16,21,.75));
-  border-bottom:1px solid var(--border);
-}
-h1{margin:0 0 .25rem 0; font-weight:800; letter-spacing:.2px}
-#stamp{font-size:.85rem; color:var(--muted)}
+*{box-sizing:border-box}
+html,body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:ui-sans-serif, -apple-system, "SF Pro Text", Inter, Segoe UI, Roboto, Arial, sans-serif;
+  font-size:14px;-webkit-font-smoothing:antialiased}
+@media (max-width:420px){html,body{font-size:13px}}
 
-.grid{display:grid; gap:14px}
-@media (min-width:760px){ .grid{grid-template-columns:repeat(2, minmax(0,1fr));} }
-@media (min-width:1100px){ .grid{grid-template-columns:repeat(3, minmax(0,1fr));} }
+main{max-width:1120px;margin:0 auto;padding:14px}
+.grid{display:grid;gap:12px}
+@media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
 
 .card{
-  border:1px solid var(--border); border-radius:14px;
   background:linear-gradient(180deg,var(--card),var(--card2));
-  padding:14px 14px 12px; box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.03);
-  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+  border:1px solid var(--border); border-radius:14px;
+  padding:14px 14px 12px; box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
 }
-.card:hover{ transform: translateY(-2px); border-color:#2b3a50; box-shadow: 0 16px 34px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05); }
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.ch{font-weight:900;letter-spacing:.2px}
+.no{font-size:11px;color:var(--muted2);background:var(--chip);border:1px solid var(--border);
+    padding:2px 8px;border-radius:999px}
 
-.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.5rem}
-.ch{font-weight:800; font-size:1.05rem}
-.no{font-size:.72rem; color:var(--muted); background:var(--chip); border:1px solid var(--border);
-    padding:.18rem .55rem; border-radius:9999px}
+.now{font-weight:800;color:var(--live);line-height:1.35}
+a.link{color:inherit;text-decoration:none;border-bottom:1px dashed rgba(103,232,249,.35)}
+a.link:hover{color:var(--accent);border-bottom-color:var(--accent)}
 
-.now{font-weight:800; color:var(--live)}
+ul{margin:8px 0 2px 0;padding-left:18px}
+ul li{margin:.14rem 0;color:#d8e1ea}            /* hellere Schrift auf dunklem Grund */
 .time{color:var(--accent)}
-.muted{color:var(--muted)}
-.warn{color:#facc15}
 
-ul{margin:.6rem 0 .2rem .2rem}
-ul li{margin:.15rem 0}
-
-.badges{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.55rem}
+.badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem}
 .badge{
-  font-size:.78rem; padding:.28rem .55rem; border-radius:.6rem; border:1px solid var(--border);
-  background:var(--chip); line-height:1;
+  font-size:.78rem;padding:.28rem .55rem;border-radius:.6rem;
+  background:var(--chip);border:1px solid var(--border);line-height:1
 }
-.badge.gpt{ color:var(--gpt); border-color: color-mix(in oklab, var(--gpt) 60%, #000) }
-.badge.imdb{ color:var(--imdb); border-color: color-mix(in oklab, var(--imdb) 60%, #000) }
-.badge.rtU{ color:var(--rtU); border-color: color-mix(in oklab, var(--rtU) 60%, #000) }
-.badge.rtC{ color:var(--rtC); border-color: color-mix(in oklab, var(--rtC) 60%, #000) }
+.badge.gpt{color:var(--gpt);border-color:color-mix(in oklab,var(--gpt) 60%, #000)}
+.badge.imdb{color:var(--imdb);border-color:color-mix(in oklab,var(--imdb) 60%, #000)}
+.badge.rtU{color:var(--rtU);border-color:color-mix(in oklab,var(--rtU) 60%, #000)}
+.badge.rtC{color:var(--rtC);border-color:color-mix(in oklab,var(--rtC) 60%, #000)}
 
-.small{font-size:.8rem; color:var(--muted); margin-top:.4rem}
-hr.sep{border-color:var(--border); opacity:.5; margin:.6rem 0}
+.small{font-size:12px;color:var(--muted2);margin-top:6px}
+.warn{color:#facc15}
 </style>
 </head>
 <body>
-
-<header class="header">
-  <div class="container">
-    <h1>EPG – Jetzt</h1>
-    <div id="stamp"> </div>
-  </div>
-</header>
-
-<main class="container">
+<main>
   <div id="root" class="grid"></div>
 </main>
 
 <script>
 const api="/api/now";
-const fmtTime = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+const t = d => new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-function nextList(arr){
-  if(!arr || !arr.length) return '<p class="muted" style="margin:.35rem 0 0">Keine weiteren Sendungen.</p>';
-  return `<ul>${arr.slice(0,2).map(p=>(
-    `<li>${p.title} <span class="time">(${fmtTime(p.start)}–${fmtTime(p.stop)})</span></li>`
-  )).join("")}</ul>`;
-}
-function ratings(r){
+// Wikipedia-Link (nutzt Originaltitel als Zusatz, wenn vorhanden)
+const wiki = (title, original) => {
+  const q = original && original.toLowerCase()!==title.toLowerCase()
+    ? `${title} ${original}` : title;
+  return "https://de.wikipedia.org/w/index.php?search=" + encodeURIComponent(q);
+};
+
+const link = (title, original) =>
+  `<a class="link" href="${wiki(title, original)}" target="_blank" rel="noopener">${title}</a>`;
+
+const nextList = (arr, original) => {
+  if(!arr || !arr.length) return '<div class="small">Keine weiteren Sendungen.</div>';
+  return `<ul>${arr.slice(0,2).map(p =>
+    `<li>${link(p.title, original)} <span class="time">(${t(p.start)}–${t(p.stop)})</span></li>`
+  ).join("")}</ul>`;
+};
+
+const ratings = r => {
   if(!r) return "";
   const chips=[];
   if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
@@ -108,45 +90,34 @@ function ratings(r){
   if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
   if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
   return chips.length ? `<div class="badges">${chips.join("")}</div>` : "";
-}
+};
 
 async function load(){
-  const stamp = document.getElementById("stamp");
-  const root = document.getElementById("root");
-  stamp.textContent = "Lade…";
-
   try{
-    const r = await fetch(api, {cache:"no-store"});
+    const r = await fetch(api,{cache:"no-store"});
     const j = await r.json();
-
-    stamp.textContent = "Stand: " + new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+    const root = document.getElementById("root");
     root.innerHTML = "";
 
-    for (const it of j.items){
-      const card = document.createElement("article");
-      card.className = "card";
+    for(const it of j.items){
+      const card = document.createElement("section"); card.className="card";
+      const head = `<div class="top"><div class="ch">${it.channel}</div><span class="no">#${it.no}</span></div>`;
 
-      const head = `
-        <div class="top">
-          <div class="ch">${it.channel}</div>
-          <span class="no">#${it.no}</span>
-        </div>`;
-
-      if (!it.now){
-        card.innerHTML = head + `<p class="warn">Kein aktuelles Programm gefunden</p>`;
-      } else {
-        const when = (it.now.start && it.now.stop) ? ` <span class="time">(${fmtTime(it.now.start)}–${fmtTime(it.now.stop)})</span>` : "";
+      if(!it.now){
+        card.innerHTML = head + `<div class="warn">Kein aktuelles Programm gefunden</div>`;
+      }else{
+        const when = it.now.start&&it.now.stop ? ` <span class="time">(${t(it.now.start)}–${t(it.now.stop)})</span>` : "";
         card.innerHTML = head
-          + `<p class="now" style="margin:.15rem 0 .35rem">${it.now.title}${when}</p>`
-          + nextList(it.next)
+          + `<div class="now">${link(it.now.title, it.original)}${when}</div>`
+          + nextList(it.next, it.original)
           + ratings(it.rating)
           + (it.original ? `<div class="small">Original: ${it.original}</div>` : "");
       }
-
       root.appendChild(card);
     }
   }catch(e){
-    document.getElementById("stamp").textContent = "Fehler: " + (e?.message || e);
+    document.getElementById("root").innerHTML =
+      `<div class="warn">Fehler: ${(e && e.message) || e}</div>`;
   }
 }
 load();
