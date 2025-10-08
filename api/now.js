@@ -1,12 +1,12 @@
-// /api/now.js — Node 18, keine externen Pakete
+// /api/now.js — Node 18
 const SOURCE = "https://raw.githubusercontent.com/globetvapp/epg/main/Germany/germany2.xml";
 const MIRRORS = [
   u => "https://r.jina.ai/http/" + u.replace(/^https?:\/\//,""),
   u => "https://r.jina.ai/https/" + u.replace(/^https?:\/\//,""),
 ];
-const OMDB = process.env.OMDB_KEY || "a9a9973d ";
+const OMDB = process.env.OMDB_KEY || "a9a9973d";
 
-// === Senderliste ===
+// Senderliste
 const CHANNELS = [
   {no:1, name:"ARD (Das Erste)", aliases:["Das Erste","ARD"]},
   {no:2, name:"ZDF", aliases:[]},
@@ -59,15 +59,17 @@ const parseXmltvDate = (s) => {
   return new Date(iso);
 };
 
-// sehr einfacher XMLTV-Parser
+// Mini-XMLTV-Parser
 const parseXmlLight = (xml) => {
   const body = (xml.match(/<tv[\s\S]*<\/tv>/i) || [xml])[0];
+
   const channels = [];
   for (const m of body.matchAll(/<channel\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/gi)) {
     const id = m[1];
     const names = [id, ...Array.from(m[2].matchAll(/<display-name[^>]*>([\s\S]*?)<\/display-name>/gi)).map(mm=>mm[1].trim())];
     channels.push({id, names});
   }
+
   const programmes = [];
   for (const m of body.matchAll(/<programme\b([^>]*)>([\s\S]*?)<\/programme>/gi)) {
     const attrs = m[1], inner = m[2];
@@ -92,7 +94,7 @@ const bestMatchId = (wanted, idx) => {
       for(const t of targets){
         let sc = 0;
         if(c === t) sc = 100;
-        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;   // „ProSieben“ vs. „ProSieben HD“
+        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;
         else if (c === t.replace(/\s/g,"")) sc = 92;
         else if (c.includes(t)) sc = 70;
         if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45); // „prosiebenfun“ abwerten
@@ -113,30 +115,19 @@ async function fetchXml(){
   throw new Error("EPG Quelle nicht erreichbar");
 }
 
-// ---- OMDb Lookup robuster: t + y, dann t ohne y, dann s-Suche + i-Detail ----
-async function omdbFind(title, year){
-  const key = OMDB;
-  if(!key) return null;
-
+// OMDb
+async function omdbFind(title){
+  if(!OMDB) return null;
   const call = async (qs) => {
-    const url = "https://www.omdbapi.com/?" + qs + `&apikey=${key}`;
+    const url = "https://www.omdbapi.com/?" + qs + `&apikey=${OMDB}`;
     const r = await fetch(url);
     return r.ok ? r.json() : null;
   };
-
-  // 1) exakter Titel mit Jahr (Serie/Film versuchen)
-  for (const type of ["movie","series"]) {
-    if(year){
-      const j = await call(`t=${encodeURIComponent(title)}&y=${encodeURIComponent(year)}&type=${type}`);
-      if(j && j.Response !== "False") return j;
-    }
-  }
-  // 2) exakter Titel ohne Jahr
+  // exakter Titel (movie/series), dann Suche
   for (const type of ["movie","series"]) {
     const j = await call(`t=${encodeURIComponent(title)}&type=${type}`);
     if(j && j.Response !== "False") return j;
   }
-  // 3) Suche, dann erstes Ergebnis nehmen und per imdbID Details holen
   const s = await call(`s=${encodeURIComponent(title)}`);
   const hit = s && s.Response !== "False" && Array.isArray(s.Search) ? s.Search[0] : null;
   if(hit?.imdbID){
@@ -145,71 +136,64 @@ async function omdbFind(title, year){
   }
   return null;
 }
-
-function computeScore(imdb, rtUser, rtCritic){
+const score = (imdb, rtU, rtC) => {
+  if(imdb==null && rtU==null && rtC==null) return null;
+  const toPct = v => v==null? null : Math.max(0,Math.min(10,parseFloat(v)))*10;
+  const imdbPct = toPct(imdb);
   const parts = [];
-  let total = 0;
-  const push = (w,v)=>{ parts.push([w,v]); total+=w; };
-  if(rtUser!=null) push(0.70, rtUser);
-  if(rtCritic!=null) push(0.15, rtCritic);
-  if(imdb!=null) push(0.15, Math.max(0,Math.min(10,imdb))*10);
-  if(!parts.length) return null;
-  const s = parts.reduce((a,[w,v])=>a + (w/total)*v, 0);
-  return Math.round(s)/10; // auf 0.1 runden, Anzeige /10
-}
-
-function guessYear(text){
-  const m = (text||"").match(/(?:\(|\b)(19|20)\d{2}(?:\)|\b)/);
-  return m ? m[0].replace(/\D/g,"") : "";
-}
+  if(rtU!=null) parts.push([0.70, rtU]);
+  if(rtC!=null) parts.push([0.15, rtC]);
+  if(imdbPct!=null) parts.push([0.15, imdbPct]);
+  const w = parts.reduce((a,[p])=>a+p,0);
+  const s = parts.reduce((a,[p,v])=>a + (p/w)*v, 0);
+  return Math.round(s)/10;
+};
 
 export default async function handler(req, res){
   cors(res);
   if(req.method === "OPTIONS") return res.status(204).end();
+
   try{
     const xmlText = clean(await fetchXml());
     const {channels:index, programmes} = parseXmlLight(xmlText);
     const now = new Date();
-    const windowEnd = new Date(now.getTime() + 2*60*60*1000);
 
     const items = [];
     for(const w of CHANNELS){
       const match = bestMatchId(w, index);
-      if(!match){ items.push({no:w.no, channel:w.name, now:null, upcoming:[]}); continue; }
+      if(!match){ items.push({no:w.no, channel:w.name, now:null, next:[]}); continue; }
 
       const list = programmes
         .filter(p => p.channel === match.id && p.start && p.stop)
         .sort((a,b)=>a.start-b.start);
 
       const cur = list.find(p => p.start <= now && now < p.stop) || null;
-      const upc = list.filter(p => p.start >= now && p.start <= windowEnd)
-                      .slice(0,5)
-                      .map(p => ({ title: p.title||"", start: p.start.toISOString(), stop: p.stop.toISOString() }));
+      // ► NUR die NÄCHSTEN 2 Sendungen (zeitunabhängig)
+      const nxt = list.filter(p => p.start > now).slice(0,2)
+        .map(p => ({ title: p.title||"", start: p.start.toISOString(), stop: p.stop.toISOString() }));
 
       const entry = {
         no: w.no,
         channel: w.name,
         matched: match.matched,
         now: cur ? { title: cur.title||"", start: cur.start.toISOString(), stop: cur.stop.toISOString() } : null,
-        upcoming: upc
+        next: nxt
       };
 
-      // Bewertungen (nur wenn OMDB gesetzt und Titel vorhanden)
+      // Ratings nur für Filme/Serien (falls OMDB_KEY vorhanden)
       if (OMDB && entry.now?.title) {
         try {
-          const y = guessYear(cur?.sub || cur?.desc || "");
-          const d = await omdbFind(entry.now.title, y);
+          const d = await omdbFind(entry.now.title);
           if (d && d.Response !== "False") {
             const imdb = d.imdbRating ? parseFloat(d.imdbRating) : null;
             let rtUser = null, rtCritic = null;
             for (const r of d.Ratings || []) {
               const src = (r.Source||"").toLowerCase();
               if (src === "rotten tomatoes") rtCritic = parseInt(r.Value) || null;
-              if (src.includes("audience")) rtUser = parseInt(r.Value) || null; // Audience falls vorhanden
+              if (src.includes("audience")) rtUser = parseInt(r.Value) || null;
             }
-            if (!rtUser && rtCritic) rtUser = rtCritic; // Fallback
-            const gpt = computeScore(imdb, rtUser, rtCritic);
-            entry.rating = { imdb, rtUser, rtCritic, gpt };
+            if (!rtUser && rtCritic) rtUser = rtCritic;
+            entry.rating = { imdb, rtUser, rtCritic, gpt: score(imdb, rtUser, rtCritic) };
           }
         } catch {}
       }
