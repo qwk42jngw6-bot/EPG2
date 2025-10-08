@@ -61,6 +61,42 @@
     }
   }
   load(); // lädt automatisch beim Öffnen (kein Button)
+  <script>
+  const api = "/api/now";
+  const $ = s => document.querySelector(s);
+  const stamp = $("#stamp"), root = $("#root");
+  const tt = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+
+  function upcomingList(arr){
+    if(!arr || !arr.length) return '<div class="muted">Keine weiteren Sendungen (2 h).</div>';
+    const items = arr.map(p => `<li><span>${p.title}</span> <span class="muted">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("");
+    return `<div style="margin-top:6px"><strong>Nächste 2 Stunden</strong><ul style="margin:6px 0 0 18px">${items}</ul></div>`;
+  }
+
+  async function load(){
+    stamp.textContent = "Lade…";
+    try{
+      const r = await fetch(api, {cache:"no-store"});
+      const j = await r.json();
+      stamp.textContent = "Stand: " + new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+      root.innerHTML = "";
+      for(const it of j.items){
+        const div = document.createElement("div"); div.className="card";
+        const head = `<div class="top"><span class="no">#${it.no}</span><div class="ch">${it.channel}</div></div>`;
+        if(!it.now){
+          div.innerHTML = head + `<div class="warn">Kein aktuelles Programm gefunden</div>`;
+        }else{
+          const when = it.now.start && it.now.stop ? ` (${tt(it.now.start)}–${tt(it.now.stop)})` : "";
+          // KEIN „JETZT“-Text mehr – nur Titel + Zeit
+          div.innerHTML = head + `<div class="now">${it.now.title}${when}</div>` + upcomingList(it.upcoming);
+        }
+        root.appendChild(div);
+      }
+    }catch(e){
+      stamp.textContent = "Fehler: " + (e?.message||e);
+    }
+  }
+  load(); // lädt automatisch beim Öffnen
 </script>
 </body>
 </html>
