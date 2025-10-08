@@ -9,12 +9,9 @@ export default async function handler(req, res) {
     const r = await fetch(url);
     const j = await r.json();
     if (j?.Response === "False") return res.status(400).json({ ok:false, query:q, api_error:j?.Error });
-    // nur das Wichtigste zurückgeben
     return res.status(200).json({
-      ok:true, query:q,
-      title:j.Title, year:j.Year,
-      imdb:j.imdbRating || null,
-      ratings:j.Ratings || []
+      ok:true, query:q, title:j.Title, year:j.Year,
+      imdb:j.imdbRating || null, ratings:j.Ratings || []
     });
   } catch (e) {
     return res.status(500).json({ ok:false, error:String(e) });
