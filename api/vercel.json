@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/now.js": { "runtime": "nodejs18.x" }
+  }
+}
