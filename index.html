@@ -13,7 +13,8 @@
   --chip:#141b24;
   --gpt:#60a5fa;      /* blau */
   --imdb:#facc15;     /* gold */
-  --rt:#ef4444;       /* rot */
+  --rtU:#ef4444;      /* RT-User rot */
+  --rtC:#22c55e;      /* RT-Kritik grün */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);
@@ -32,17 +33,7 @@ h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.3px}
 .card{background:var(--card);border:1px solid var(--border);
   border-radius:14px;padding:14px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
 
-.top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.logo{
-  width:32px;height:32px;border-radius:8px;overflow:hidden;
-  display:inline-flex;align-items:center;justify-content:center;
-  background:#0e1620;border:1px solid var(--border);flex:0 0 32px
-}
-.logo img{width:100%;height:100%;object-fit:contain;display:block}
-.logo .mono{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:900;letter-spacing:.3px;color:#dbeafe}
-
-.header-line{display:flex;align-items:baseline;justify-content:space-between;width:100%}
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
 .ch{font-size:17px;font-weight:900;letter-spacing:.2px}
 .no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
 
@@ -53,10 +44,12 @@ h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.3px}
 ul{padding-left:18px;margin:8px 0}
 .badge{display:inline-block;background:var(--chip);border:1px solid var(--border);
   padding:3px 8px;border-radius:10px;margin-right:6px;font-size:12px}
-.badge.gpt{background:color-mix(in oklab, var(--gpt) 20%, transparent); border-color:color-mix(in oklab, var(--gpt) 60%, #000); color:var(--gpt)}
-.badge.imdb{background:color-mix(in oklab, var(--imdb) 20%, transparent); border-color:color-mix(in oklab, var(--imdb) 60%, #000); color:#fcd34d}
-.badge.rt{background:color-mix(in oklab, var(--rt) 20%, transparent); border-color:color-mix(in oklab, var(--rt) 60%, #000); color:#f87171}
+.badge.gpt{color:var(--gpt); border-color:color-mix(in oklab, var(--gpt) 60%, #000)}
+.badge.imdb{color:var(--imdb); border-color:color-mix(in oklab, var(--imdb) 60%, #000)}
+.badge.rtU{color:var(--rtU); border-color:color-mix(in oklab, var(--rtU) 60%, #000)}
+.badge.rtC{color:var(--rtC); border-color:color-mix(in oklab, var(--rtC) 60%, #000)}
 .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.small{font-size:12px;color:var(--muted);margin-top:6px}
 </style>
 </head>
 <body>
@@ -75,78 +68,6 @@ const $=s=>document.querySelector(s);
 const stamp=$("#stamp"),root=$("#root");
 const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-// Domains für Clearbit (logo.clearbit.com/<domain>)
-const DOMAIN_MAP = {
-  "ARD (Das Erste)":"ard.de",
-  "ZDF":"zdf.de",
-  "RTL":"rtl.de",
-  "ProSieben":"prosieben.de",
-  "Sat.1":"sat1.de",
-  "SWR":"swr.de",
-  "Sky Sport F1 (Formel 1)":"skysport.de",
-  "Motorvision TV":"motorvision.tv",
-  "Sky Cinema Highlights":"sky.de",
-  "Sky Cinema Action":"sky.de",
-  "Sky Cinema Primera":"sky.de",
-  "Sky Cinema Classic":"sky.de",
-  "Sky Cinema Family":"sky.de",
-  "Warner Bros. (Film & Serie)":"warnertv.de",
-  "VOX":"vox.de",
-  "RTL Zwei":"rtl2.de",
-  "Kabel Eins":"kabeleins.de",
-  "Kabel Eins Doku":"kabeleinsdoku.de",
-  "BBC Food":"bbc.co.uk",
-  "DMAX":"dmax.de",
-  "BBC Top Gear":"topgear.com",
-  "N24 Doku":"welt.de",
-  "Discovery Channel":"discovery.de",
-  "Sky Documentaries":"sky.de",
-  "History Channel":"history.de",
-  "Sky Nature":"sky.de",
-  "Terra Mater":"terramater.at",
-  "National Geographic":"nationalgeographic.de",
-  "National Geo Wild":"nationalgeographic.de",
-  "Animal Planet":"animalplanet.com",
-  "Welt":"welt.de",
-  "N-TV":"ntv.de",
-  "Tagesschau24":"tagesschau.de",
-  "Nick (Nickelodeon)":"nick.de",
-  "MTV":"mtv.de"
-};
-
-// Utils
-const slug = s => s.toLowerCase()
-  .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
-  .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-const hue = s => Math.abs([...s].reduce((a,c)=>a+c.charCodeAt(0),0))%360;
-
-// Logo: 1) /logos/<slug>.png  2) https://logo.clearbit.com/<domain>  3) Monogramm
-function logoEl(channel){
-  const el=document.createElement("div"); el.className="logo";
-  const mono=document.createElement("div"); mono.className="mono";
-  mono.textContent=channel.replace(/[^A-Za-z0-9]/g," ").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-  const h=hue(channel);
-  mono.style.background=`oklch(0.23 0.06 ${h})`;
-  mono.style.color=`oklch(0.88 0.03 ${Math.abs(h-180)})`;
-  el.appendChild(mono);
-
-  const trySrcs = [];
-  trySrcs.push("/logos/"+slug(channel)+".png");
-  if (DOMAIN_MAP[channel]) trySrcs.push("https://logo.clearbit.com/"+DOMAIN_MAP[channel]);
-
-  const img=new Image(); img.alt=channel+" Logo";
-  let i=0;
-  const tryNext=()=> {
-    if (i>=trySrcs.length){ return; }
-    img.src = trySrcs[i++];
-  };
-  img.onload=()=>{ el.innerHTML=""; el.appendChild(img); };
-  img.onerror=tryNext;
-
-  tryNext(); // start loading
-  return el;
-}
-
 function nextList(arr){
   if(!arr||!arr.length) return '<div class="muted">Keine weiteren Sendungen.</div>';
   return `<ul>${arr.slice(0,2).map(p=>`<li>${p.title} <span class="time">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("")}</ul>`;
@@ -156,8 +77,8 @@ function ratings(r){
   const chips=[];
   if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
   if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
-  if(r.rtUser!=null) chips.push(`<span class="badge rt">RT-User ${r.rtUser}%</span>`);
-  if(r.rtCritic!=null) chips.push(`<span class="badge rt">RT-Kritik ${r.rtCritic}%</span>`);
+  if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
+  if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
   return chips.length? `<div class="row">${chips.join("")}</div>` : "";
 }
 
@@ -170,20 +91,13 @@ async function load(){
     root.innerHTML="";
     for(const it of j.items){
       const card=document.createElement("div"); card.className="card";
-      const top=document.createElement("div"); top.className="top";
-      top.appendChild(logoEl(it.channel));
-      const right=document.createElement("div"); right.className="header-line";
-      right.innerHTML=`<div class="ch">${it.channel}</div><span class="no">#${it.no}</span>`;
-      top.appendChild(right);
-      card.appendChild(top);
-
+      const head=`<div class="top"><div class="ch">${it.channel}</div><span class="no">#${it.no}</span></div>`;
       if(!it.now){
-        card.insertAdjacentHTML("beforeend", `<div class="warn">Kein aktuelles Programm gefunden</div>`);
+        card.innerHTML=head+`<div class="warn">Kein aktuelles Programm gefunden</div>`;
       }else{
         const when = it.now.start && it.now.stop ? ` <span class="time">(${tt(it.now.start)}–${tt(it.now.stop)})</span>` : "";
-        card.insertAdjacentHTML("beforeend", `<div class="now">${it.now.title}${when}</div>`);
-        card.insertAdjacentHTML("beforeend", nextList(it.next));      // nur nächste 2 Sendungen
-        card.insertAdjacentHTML("beforeend", ratings(it.rating));     // farbige Chips
+        card.innerHTML=head+`<div class="now">${it.now.title}${when}</div>`+nextList(it.next)+ratings(it.rating)
+          + (it.original ? `<div class="small">Original: ${it.original}</div>` : "");
       }
       root.appendChild(card);
     }
