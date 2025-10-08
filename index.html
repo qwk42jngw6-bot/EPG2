@@ -8,9 +8,9 @@
 :root{
   --bg:#0b0f14; --card:#121922; --border:#1f2733;
   --text:#e8edf3; --muted:#9aa6b2;
-  --accent:#67e8f9;   /* Zeiten: cyan */
+  --accent:#67e8f9;   /* Zeiten */
   --live:#86efac;     /* aktueller Titel */
-  --chip:#141b24;     /* Chips/Badges */
+  --chip:#141b24;
   --gpt:#60a5fa;      /* blau */
   --imdb:#facc15;     /* gold */
   --rt:#ef4444;       /* rot */
@@ -75,22 +75,75 @@ const $=s=>document.querySelector(s);
 const stamp=$("#stamp"),root=$("#root");
 const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-// Logo-Handling: zuerst /logos/<slug>.png; sonst Monogramm mit Auto-Farbe
+// Domains für Clearbit (logo.clearbit.com/<domain>)
+const DOMAIN_MAP = {
+  "ARD (Das Erste)":"ard.de",
+  "ZDF":"zdf.de",
+  "RTL":"rtl.de",
+  "ProSieben":"prosieben.de",
+  "Sat.1":"sat1.de",
+  "SWR":"swr.de",
+  "Sky Sport F1 (Formel 1)":"skysport.de",
+  "Motorvision TV":"motorvision.tv",
+  "Sky Cinema Highlights":"sky.de",
+  "Sky Cinema Action":"sky.de",
+  "Sky Cinema Primera":"sky.de",
+  "Sky Cinema Classic":"sky.de",
+  "Sky Cinema Family":"sky.de",
+  "Warner Bros. (Film & Serie)":"warnertv.de",
+  "VOX":"vox.de",
+  "RTL Zwei":"rtl2.de",
+  "Kabel Eins":"kabeleins.de",
+  "Kabel Eins Doku":"kabeleinsdoku.de",
+  "BBC Food":"bbc.co.uk",
+  "DMAX":"dmax.de",
+  "BBC Top Gear":"topgear.com",
+  "N24 Doku":"welt.de",
+  "Discovery Channel":"discovery.de",
+  "Sky Documentaries":"sky.de",
+  "History Channel":"history.de",
+  "Sky Nature":"sky.de",
+  "Terra Mater":"terramater.at",
+  "National Geographic":"nationalgeographic.de",
+  "National Geo Wild":"nationalgeographic.de",
+  "Animal Planet":"animalplanet.com",
+  "Welt":"welt.de",
+  "N-TV":"ntv.de",
+  "Tagesschau24":"tagesschau.de",
+  "Nick (Nickelodeon)":"nick.de",
+  "MTV":"mtv.de"
+};
+
+// Utils
 const slug = s => s.toLowerCase()
   .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
   .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const hue = s => Math.abs([...s].reduce((a,c)=>a+c.charCodeAt(0),0))%360;
+
+// Logo: 1) /logos/<slug>.png  2) https://logo.clearbit.com/<domain>  3) Monogramm
 function logoEl(channel){
   const el=document.createElement("div"); el.className="logo";
-  const url="/logos/"+slug(channel)+".png";
-  const img=new Image(); img.src=url; img.alt=channel+" Logo";
   const mono=document.createElement("div"); mono.className="mono";
   mono.textContent=channel.replace(/[^A-Za-z0-9]/g," ").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-  mono.style.background=`oklch(0.25 0.05 ${hue(channel)} / 1)`;
-  mono.style.color=`oklch(0.88 0.03 ${Math.abs(hue(channel)-180)} / 1)`;
-  img.onload=()=>{el.innerHTML="";el.appendChild(img);};
-  img.onerror=()=>{el.innerHTML="";el.appendChild(mono);};
+  const h=hue(channel);
+  mono.style.background=`oklch(0.23 0.06 ${h})`;
+  mono.style.color=`oklch(0.88 0.03 ${Math.abs(h-180)})`;
   el.appendChild(mono);
+
+  const trySrcs = [];
+  trySrcs.push("/logos/"+slug(channel)+".png");
+  if (DOMAIN_MAP[channel]) trySrcs.push("https://logo.clearbit.com/"+DOMAIN_MAP[channel]);
+
+  const img=new Image(); img.alt=channel+" Logo";
+  let i=0;
+  const tryNext=()=> {
+    if (i>=trySrcs.length){ return; }
+    img.src = trySrcs[i++];
+  };
+  img.onload=()=>{ el.innerHTML=""; el.appendChild(img); };
+  img.onerror=tryNext;
+
+  tryNext(); // start loading
   return el;
 }
 
@@ -117,8 +170,6 @@ async function load(){
     root.innerHTML="";
     for(const it of j.items){
       const card=document.createElement("div"); card.className="card";
-
-      // Kopf
       const top=document.createElement("div"); top.className="top";
       top.appendChild(logoEl(it.channel));
       const right=document.createElement("div"); right.className="header-line";
@@ -131,10 +182,8 @@ async function load(){
       }else{
         const when = it.now.start && it.now.stop ? ` <span class="time">(${tt(it.now.start)}–${tt(it.now.stop)})</span>` : "";
         card.insertAdjacentHTML("beforeend", `<div class="now">${it.now.title}${when}</div>`);
-        // nur die nächsten 2 Sendungen anzeigen
-        card.insertAdjacentHTML("beforeend", nextList(it.next));
-        // Ratings farbig
-        card.insertAdjacentHTML("beforeend", ratings(it.rating));
+        card.insertAdjacentHTML("beforeend", nextList(it.next));      // nur nächste 2 Sendungen
+        card.insertAdjacentHTML("beforeend", ratings(it.rating));     // farbige Chips
       }
       root.appendChild(card);
     }
