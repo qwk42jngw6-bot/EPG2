@@ -6,12 +6,12 @@ const MIRRORS = [
 ];
 const OMDB = process.env.OMDB_KEY || "";
 
-// === Deine Senderliste ===
+// === Senderliste ===
 const CHANNELS = [
   {no:1, name:"ARD (Das Erste)", aliases:["Das Erste","ARD"]},
   {no:2, name:"ZDF", aliases:[]},
   {no:3, name:"RTL", aliases:["RTL Television"]},
-  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben","ProSieben HD"]},
+  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben","ProSieben HD"]}, // NICHT "Fun"
   {no:5, name:"Sat.1", aliases:["Sat1","SAT.1"]},
   {no:6, name:"SWR", aliases:["SWR BW","SWR RP","SWR Fernsehen"]},
   {no:7, name:"Sky Sport F1 (Formel 1)", aliases:["Sky Sport F1","Sky Sport Formel 1"]},
@@ -59,16 +59,15 @@ const parseXmltvDate = (s) => {
   return new Date(iso);
 };
 
+// sehr einfacher XMLTV-Parser
 const parseXmlLight = (xml) => {
   const body = (xml.match(/<tv[\s\S]*<\/tv>/i) || [xml])[0];
-
   const channels = [];
   for (const m of body.matchAll(/<channel\b[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/gi)) {
     const id = m[1];
     const names = [id, ...Array.from(m[2].matchAll(/<display-name[^>]*>([\s\S]*?)<\/display-name>/gi)).map(mm=>mm[1].trim())];
     channels.push({id, names});
   }
-
   const programmes = [];
   for (const m of body.matchAll(/<programme\b([^>]*)>([\s\S]*?)<\/programme>/gi)) {
     const attrs = m[1], inner = m[2];
@@ -81,6 +80,7 @@ const parseXmlLight = (xml) => {
   return {channels, programmes};
 };
 
+// Matching: „ProSieben“ ≠ „ProSieben Fun“
 const norm = s => (s||"").toLowerCase().replace(/\s+/g," ").trim();
 const isWordBoundary = (c) => !c || /[^a-z0-9]/.test(c);
 const bestMatchId = (wanted, idx) => {
@@ -92,10 +92,10 @@ const bestMatchId = (wanted, idx) => {
       for(const t of targets){
         let sc = 0;
         if(c === t) sc = 100;
-        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;
+        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;   // „ProSieben“ vs. „ProSieben HD“
         else if (c === t.replace(/\s/g,"")) sc = 92;
         else if (c.includes(t)) sc = 70;
-        if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45);
+        if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45); // „prosiebenfun“ abwerten
         if(sc > best.score || (sc === best.score && cand.length < best.len)){
           best = {score:sc, id:ch.id, matched:cand, len:cand.length};
         }
@@ -111,6 +111,56 @@ async function fetchXml(){
     try{ const r = await fetch(m(SOURCE),{cache:"no-store"}); if(r.ok) return await r.text(); }catch{}
   }
   throw new Error("EPG Quelle nicht erreichbar");
+}
+
+// ---- OMDb Lookup robuster: t + y, dann t ohne y, dann s-Suche + i-Detail ----
+async function omdbFind(title, year){
+  const key = OMDB;
+  if(!key) return null;
+
+  const call = async (qs) => {
+    const url = "https://www.omdbapi.com/?" + qs + `&apikey=${key}`;
+    const r = await fetch(url);
+    return r.ok ? r.json() : null;
+  };
+
+  // 1) exakter Titel mit Jahr (Serie/Film versuchen)
+  for (const type of ["movie","series"]) {
+    if(year){
+      const j = await call(`t=${encodeURIComponent(title)}&y=${encodeURIComponent(year)}&type=${type}`);
+      if(j && j.Response !== "False") return j;
+    }
+  }
+  // 2) exakter Titel ohne Jahr
+  for (const type of ["movie","series"]) {
+    const j = await call(`t=${encodeURIComponent(title)}&type=${type}`);
+    if(j && j.Response !== "False") return j;
+  }
+  // 3) Suche, dann erstes Ergebnis nehmen und per imdbID Details holen
+  const s = await call(`s=${encodeURIComponent(title)}`);
+  const hit = s && s.Response !== "False" && Array.isArray(s.Search) ? s.Search[0] : null;
+  if(hit?.imdbID){
+    const d = await call(`i=${encodeURIComponent(hit.imdbID)}`);
+    if(d && d.Response !== "False") return d;
+  }
+  return null;
+}
+
+function computeScore(imdb, rtUser, rtCritic){
+  const parts = [];
+  let total = 0;
+  const push = (w,v)=>{ parts.push([w,v]); total+=w; };
+  if(rtUser!=null) push(0.70, rtUser);
+  if(rtCritic!=null) push(0.15, rtCritic);
+  if(imdb!=null) push(0.15, Math.max(0,Math.min(10,imdb))*10);
+  if(!parts.length) return null;
+  const s = parts.reduce((a,[w,v])=>a + (w/total)*v, 0);
+  return Math.round(s)/10; // auf 0.1 runden, Anzeige /10
+}
+
+function guessYear(text){
+  const m = (text||"").match(/(?:\(|\b)(19|20)\d{2}(?:\)|\b)/);
+  return m ? m[0].replace(/\D/g,"") : "";
 }
 
 export default async function handler(req, res){
@@ -136,39 +186,35 @@ export default async function handler(req, res){
                       .slice(0,5)
                       .map(p => ({ title: p.title||"", start: p.start.toISOString(), stop: p.stop.toISOString() }));
 
-      items.push({
+      const entry = {
         no: w.no,
         channel: w.name,
         matched: match.matched,
         now: cur ? { title: cur.title||"", start: cur.start.toISOString(), stop: cur.stop.toISOString() } : null,
         upcoming: upc
-      });
-    }
+      };
 
-    // === Bewertungsteil ===
-    if (OMDB) {
-      for (const item of items) {
-        const t = item.now?.title;
-        if (!t) continue;
+      // Bewertungen (nur wenn OMDB gesetzt und Titel vorhanden)
+      if (OMDB && entry.now?.title) {
         try {
-          const resp = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(t)}&apikey=${OMDB}`);
-          const d = await resp.json();
+          const y = guessYear(cur?.sub || cur?.desc || "");
+          const d = await omdbFind(entry.now.title, y);
           if (d && d.Response !== "False") {
-            const imdb = parseFloat(d.imdbRating) || null;
+            const imdb = d.imdbRating ? parseFloat(d.imdbRating) : null;
             let rtUser = null, rtCritic = null;
             for (const r of d.Ratings || []) {
-              if (r.Source === "Rotten Tomatoes") rtCritic = parseInt(r.Value) || null;
-              if (r.Source === "Rotten Tomatoes - Audience") rtUser = parseInt(r.Value) || null;
+              const src = (r.Source||"").toLowerCase();
+              if (src === "rotten tomatoes") rtCritic = parseInt(r.Value) || null;
+              if (src.includes("audience")) rtUser = parseInt(r.Value) || null; // Audience falls vorhanden
             }
-            if (!rtUser && rtCritic) rtUser = rtCritic;
-            const gptScore = (rtUser ? 0.7*rtUser : 0) + (rtCritic ? 0.15*rtCritic : 0) + (imdb ? 0.15*imdb*10 : 0);
-            item.rating = {
-              imdb, rtUser, rtCritic,
-              gpt: gptScore ? Math.round(gptScore)/10 : null
-            };
+            if (!rtUser && rtCritic) rtUser = rtCritic; // Fallback
+            const gpt = computeScore(imdb, rtUser, rtCritic);
+            entry.rating = { imdb, rtUser, rtCritic, gpt };
           }
         } catch {}
       }
+
+      items.push(entry);
     }
 
     res.status(200).json({ts: new Date().toISOString(), items});
