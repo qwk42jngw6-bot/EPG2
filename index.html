@@ -8,17 +8,17 @@
 :root{
   --bg:#0b0d10; --card:#12151a; --border:#1f232b;
   --text:#e7ecf2; --muted:#9aa6b2;
-  --accent:#5eead4;   /* türkis für Titelzeiten */
-  --good:#86efac;     /* grün für Live-Titel */
-  --chip:#1a222d;     /* Chip-Hintergrund */
+  --accent:#5eead4;   /* Zeiten */
+  --good:#86efac;     /* aktueller Titel */
+  --chip:#1a222d;     /* Chips/Badges */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Segoe UI,Inter,Roboto,sans-serif;font-size:14px}
+  font-family:system-ui,Segoe UI,Inter,Roboto,sans-serif;font-size:14px; -webkit-font-smoothing:antialiased}
 @media (max-width:420px){html,body{font-size:13px}}
 
 header{padding:12px 14px;border-bottom:1px solid var(--border);
-  position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,13,16,.92))}
+  position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,13,16,.92));z-index:10}
 h1{margin:0 0 2px 0;font-size:18px;font-weight:800;letter-spacing:.2px}
 .stamp{font-size:12px;color:var(--muted)}
 
@@ -29,9 +29,21 @@ h1{margin:0 0 2px 0;font-size:18px;font-weight:800;letter-spacing:.2px}
 
 .card{background:var(--card);border:1px solid var(--border);
   border-radius:12px;padding:12px;box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
-.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px}
-.no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+
+.top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.logo{
+  width:28px;height:28px;border-radius:6px;overflow:hidden;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:#0e1620;border:1px solid var(--border);flex:0 0 28px
+}
+.logo img{width:100%;height:100%;object-fit:contain;display:block}
+.logo .mono{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:800;color:#cfe7ff;letter-spacing:.3px}
+
+.header-line{display:flex;align-items:baseline;justify-content:space-between;width:100%}
 .ch{font-size:16px;font-weight:900;letter-spacing:.2px}
+.no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
+
 .now{font-weight:700;color:var(--good)}
 .time{color:var(--accent)}
 .muted{color:var(--muted)}
@@ -58,6 +70,78 @@ const $=s=>document.querySelector(s);
 const stamp=$("#stamp"),root=$("#root");
 const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
+// 1) Logo-Quellen: zuerst /logos/<slug>.png aus deinem Repo,
+//    sonst (optional) direkte URL aus dieser Map (kannst du später füllen/ändern).
+const CHANNEL_LOGOS = {
+  "ARD (Das Erste)": "",   // wenn leer -> /logos/ard-das-erste.png versucht, sonst Monogramm
+  "ZDF": "",
+  "RTL": "",
+  "ProSieben": "",
+  "Sat.1": "",
+  "SWR": "",
+  "Sky Sport F1 (Formel 1)": "",
+  "Motorvision TV": "",
+  "Sky Cinema Highlights": "",
+  "Sky Cinema Action": "",
+  "Sky Cinema Primera": "",
+  "Sky Cinema Classic": "",
+  "Sky Cinema Family": "",
+  "Warner Bros. (Film & Serie)": "",
+  "VOX": "",
+  "RTL Zwei": "",
+  "Kabel Eins": "",
+  "Kabel Eins Doku": "",
+  "BBC Food": "",
+  "DMAX": "",
+  "BBC Top Gear": "",
+  "N24 Doku": "",
+  "Discovery Channel": "",
+  "Sky Documentaries": "",
+  "History Channel": "",
+  "Sky Nature": "",
+  "Terra Mater": "",
+  "National Geographic": "",
+  "National Geo Wild": "",
+  "Animal Planet": "",
+  "Welt": "",
+  "N-TV": "",
+  "Tagesschau24": "",
+  "Nick (Nickelodeon)": "",
+  "MTV": ""
+};
+
+// Slug für Dateinamen /logos/<slug>.png
+const slug = s => s.toLowerCase()
+  .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+  .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+
+// Liefert Logo-URL oder "" (dann Monogramm nutzen)
+function getLogoUrl(channel){
+  const direct = CHANNEL_LOGOS[channel] || "";
+  if (direct) return direct;
+  // versuche statische Datei im Repo
+  return "/logos/" + slug(channel) + ".png";
+}
+
+function logoEl(channel){
+  const url = getLogoUrl(channel);
+  const el = document.createElement("div");
+  el.className = "logo";
+  const img = new Image();
+  img.src = url;
+  img.alt = channel + " Logo";
+  // Fallback: Monogramm (2 Buchstaben)
+  const mono = document.createElement("div");
+  mono.className = "mono";
+  mono.textContent = channel.replace(/[^A-ZÄÖÜa-zäöü0-9]/g," ").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  // Wenn Bild lädt → anzeigen, sonst Monogramm
+  img.onload = ()=>{ el.innerHTML=""; el.appendChild(img); };
+  img.onerror = ()=>{ el.innerHTML=""; el.appendChild(mono); };
+  // zunächst Monogramm, bis Bild (falls vorhanden) geladen ist
+  el.appendChild(mono);
+  return el;
+}
+
 function upcomingList(arr){
   if(!arr||!arr.length) return '<div class="muted">Keine weiteren Sendungen (2 h).</div>';
   return `<div><span class="badge">Nächste 2 Stunden</span>
@@ -81,15 +165,25 @@ async function load(){
     stamp.textContent="Stand: "+new Date(j.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
     root.innerHTML="";
     for(const it of j.items){
-      const div=document.createElement("div"); div.className="card";
-      const head=`<div class="top"><div class="ch">${it.channel}</div><span class="no">#${it.no}</span></div>`;
+      const card=document.createElement("div"); card.className="card";
+
+      // Kopfzeile mit Logo + Name + #nr
+      const top=document.createElement("div"); top.className="top";
+      top.appendChild(logoEl(it.channel));
+      const right=document.createElement("div"); right.className="header-line";
+      right.innerHTML=`<div class="ch">${it.channel}</div><span class="no">#${it.no}</span>`;
+      top.appendChild(right);
+      card.appendChild(top);
+
       if(!it.now){
-        div.innerHTML=head+`<div class="warn">Kein aktuelles Programm gefunden</div>`;
+        card.insertAdjacentHTML("beforeend", `<div class="warn">Kein aktuelles Programm gefunden</div>`);
       }else{
         const when = it.now.start && it.now.stop ? ` <span class="time">(${tt(it.now.start)}–${tt(it.now.stop)})</span>` : "";
-        div.innerHTML=head+`<div class="now">${it.now.title}${when}</div>`+upcomingList(it.upcoming)+ratingBlock(it.rating);
+        card.insertAdjacentHTML("beforeend", `<div class="now">${it.now.title}${when}</div>`);
+        card.insertAdjacentHTML("beforeend", upcomingList(it.upcoming));
+        card.insertAdjacentHTML("beforeend", ratingBlock(it.rating));
       }
-      root.appendChild(div);
+      root.appendChild(card);
     }
   }catch(e){
     stamp.textContent="Fehler: "+(e?.message||e);
