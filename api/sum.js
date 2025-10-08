@@ -1,24 +1,31 @@
+// /api/sum.js – Vercel Serverless Function (Node 18+)
 export default async function handler(req, res) {
-  // CORS (zur Sicherheit auch hier)
+  // === CORS ===
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
 
-  // Body lesen
+  // === Body einlesen (kein req.json()) ===
   const raw = await new Promise((resolve, reject) => {
-    let b = ""; req.on("data", c => b += c);
-    req.on("end", () => resolve(b)); req.on("error", reject);
+    let buf = "";
+    req.on("data", chunk => (buf += chunk));
+    req.on("end", () => resolve(buf));
+    req.on("error", reject);
   });
-  let data = {}; try { data = raw ? JSON.parse(raw) : {}; } catch {
+
+  let data = {};
+  try {
+    data = raw ? JSON.parse(raw) : {};
+  } catch {
     return res.status(400).json({ error: "Invalid JSON body" });
   }
 
   const title = String(data.title || data.original || "").trim();
   if (!title) return res.status(400).json({ error: "title missing" });
 
-  // OpenAI
+  // === Anfrage an OpenAI ===
   const resp = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
@@ -31,9 +38,14 @@ export default async function handler(req, res) {
     })
   });
 
+  // === Fehler-Handling ===
   const out = await resp.json().catch(() => ({}));
   if (!resp.ok) {
-    return res.status(resp.status).json({ error: out.error || out || { message: "OpenAI call failed" } });
+    return res.status(resp.status).json({
+      error: out.error || out || { message: "OpenAI call failed" }
+    });
   }
+
+  // === Erfolg ===
   return res.status(200).json({ summary: out.output_text ?? "" });
 }
