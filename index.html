@@ -1,27 +1,27 @@
-<!-- trigger redeploy -->
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
+<meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>EPG – Jetzt (Germany 2)</title>
 <style>
-  :root{--bg:#0a0a0a;--fg:#f5f5f5;--muted:#b4b4b4;--card:#121212;--border:#232323;--ok:#22c55e;--warn:#eab308}
-  *{box-sizing:border-box} html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Inter,Segoe UI,Roboto,sans-serif}
-  header{padding:12px;border-bottom:1px solid var(--border)}
-  h1{margin:0;font-size:18px}
-  .stamp{font-size:12px;color:#d4d4d4;margin-top:4px}
-  .container{padding:12px}
-  .grid{display:grid;gap:10px}
-  @media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
-  @media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
-  .top{display:flex;gap:8px;align-items:center}
-  .no{font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:999px;color:#e5e5e5}
-  .ch{font-weight:800}
-  .now{color:var(--ok);font-weight:800;margin-top:4px}
-  .muted{color:var(--muted);font-size:12px}
-  .warn{color:var(--warn)}
+:root{--bg:#0a0a0a;--fg:#f5f5f5;--muted:#4b4b4b;--card:#121212;--border:#232323;--ok:#22c55e;--warn:#eab308}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Inter,Segoe UI,Roboto,sans-serif}
+header{padding:12px;border-bottom:1px solid var(--border)}
+h1{margin:0;font-size:18px}
+.stamp{font-size:12px;color:#aaa;margin-top:4px}
+.container{padding:10px}
+.grid{display:grid;gap:10px}
+@media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.no{color:#666;font-size:12px}
+.ch{font-weight:700}
+.now{color:var(--ok);font-weight:600}
+.warn{color:var(--warn);font-size:12px}
+.rating{margin-top:6px;font-size:12px;color:#ccc}
+ul{padding-left:15px;margin:5px 0}
 </style>
 </head>
 <body>
@@ -33,70 +33,45 @@
   <div id="root" class="grid"></div>
 </div>
 <script>
-  const api = "/api/now"; // Frontend & API im selben Vercel-Projekt
-  const $ = s => document.querySelector(s);
-  const stamp = $("#stamp"), root = $("#root");
-  const tt = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+const api="/api/now";
+const $=s=>document.querySelector(s);
+const stamp=$("#stamp"),root=$("#root");
+const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-  async function load(){
-    stamp.textContent = "Lade…";
-    try{
-      const r = await fetch(api, {cache:"no-store"});
-      const j = await r.json();
-      stamp.textContent = "Stand: " + new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
-      root.innerHTML = "";
-      for(const it of j.items){
-        const div = document.createElement("div"); div.className="card";
-        const head = `<div class="top"><span class="no">#${it.no}</span><div class="ch">${it.channel}</div></div>`;
-        if(!it.now){
-          div.innerHTML = head + `<div class="warn">Kein JETZT gefunden</div>`;
-        }else{
-          const when = it.now.start && it.now.stop ? ` (${tt(it.now.start)}–${tt(it.now.stop)})` : "";
-          div.innerHTML = head + `<div class="now">JETZT ${it.now.title}${when}</div>`;
+function upcomingList(arr){
+  if(!arr||!arr.length)return'<div class="muted">Keine weiteren Sendungen (2 h).</div>';
+  const items=arr.map(p=>`<li>${p.title} <span class="muted">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("");
+  return `<div><strong>Nächste 2 Stunden:</strong><ul>${items}</ul></div>`;
+}
+
+async function load(){
+  stamp.textContent="Lade…";
+  try{
+    const r=await fetch(api,{cache:"no-store"});
+    const j=await r.json();
+    stamp.textContent="Stand: "+new Date(j.ts).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    root.innerHTML="";
+    for(const it of j.items){
+      const div=document.createElement("div");div.className="card";
+      const head=`<div class="top"><span class="no">#${it.no}</span><div class="ch">${it.channel}</div></div>`;
+      if(!it.now){
+        div.innerHTML=head+`<div class="warn">Kein aktuelles Programm gefunden</div>`;
+      }else{
+        const when=it.now.start&&it.now.stop?` (${tt(it.now.start)}–${tt(it.now.stop)})`:"";
+        let rating="";
+        if(it.rating&&it.rating.gpt){
+          rating=`<div class="rating">⭐ GPT-Score: ${it.rating.gpt}/10 
+          (IMDb: ${it.rating.imdb??"-"}, RT: ${it.rating.rtUser??"-"}%)</div>`;
         }
-        root.appendChild(div);
+        div.innerHTML=head+`<div class="now">${it.now.title}${when}</div>`+upcomingList(it.upcoming)+rating;
       }
-    }catch(e){
-      stamp.textContent = "Fehler: " + (e?.message||e);
+      root.appendChild(div);
     }
+  }catch(e){
+    stamp.textContent="Fehler: "+(e?.message||e);
   }
-  load(); // lädt automatisch beim Öffnen (kein Button)
-  <script>
-  const api = "/api/now";
-  const $ = s => document.querySelector(s);
-  const stamp = $("#stamp"), root = $("#root");
-  const tt = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-
-  function upcomingList(arr){
-    if(!arr || !arr.length) return '<div class="muted">Keine weiteren Sendungen (2 h).</div>';
-    const items = arr.map(p => `<li><span>${p.title}</span> <span class="muted">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("");
-    return `<div style="margin-top:6px"><strong>Nächste 2 Stunden</strong><ul style="margin:6px 0 0 18px">${items}</ul></div>`;
-  }
-
-  async function load(){
-    stamp.textContent = "Lade…";
-    try{
-      const r = await fetch(api, {cache:"no-store"});
-      const j = await r.json();
-      stamp.textContent = "Stand: " + new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"});
-      root.innerHTML = "";
-      for(const it of j.items){
-        const div = document.createElement("div"); div.className="card";
-        const head = `<div class="top"><span class="no">#${it.no}</span><div class="ch">${it.channel}</div></div>`;
-        if(!it.now){
-          div.innerHTML = head + `<div class="warn">Kein aktuelles Programm gefunden</div>`;
-        }else{
-          const when = it.now.start && it.now.stop ? ` (${tt(it.now.start)}–${tt(it.now.stop)})` : "";
-          // KEIN „JETZT“-Text mehr – nur Titel + Zeit
-          div.innerHTML = head + `<div class="now">${it.now.title}${when}</div>` + upcomingList(it.upcoming);
-        }
-        root.appendChild(div);
-      }
-    }catch(e){
-      stamp.textContent = "Fehler: " + (e?.message||e);
-    }
-  }
-  load(); // lädt automatisch beim Öffnen
+}
+load();
 </script>
 </body>
 </html>
