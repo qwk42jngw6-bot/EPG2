@@ -4,7 +4,7 @@ const MIRRORS = [
   u => "https://r.jina.ai/http/" + u.replace(/^https?:\/\//,""),
   u => "https://r.jina.ai/https/" + u.replace(/^https?:\/\//,""),
 ];
-const OMDB = process.env.OMDB_KEY || "";
+const OMDB = process.env.OMDB_KEY || "a9a9973d ";
 
 // === Senderliste ===
 const CHANNELS = [
