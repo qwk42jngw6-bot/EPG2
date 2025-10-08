@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/now.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "builds": [
     { "src": "index.html", "use": "@vercel/static" },
     { "src": "api/now.js", "use": "@vercel/node" }
