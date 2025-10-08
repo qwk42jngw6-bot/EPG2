@@ -6,42 +6,37 @@
 <title>EPG – Jetzt (Germany 2)</title>
 <style>
 :root{
-  --bg:#0b0f14; --card:#121922; --border:#1f2733;
+  --bg:#0b0f14; --card:#111822; --border:#1f2733;
   --text:#e8edf3; --muted:#9aa6b2;
-  --accent:#67e8f9;   /* Zeiten */
-  --live:#86efac;     /* aktueller Titel */
-  --chip:#141b24;
-  --gpt:#60a5fa;      /* blau */
-  --imdb:#facc15;     /* gold */
-  --rtU:#ef4444;      /* RT-User rot */
-  --rtC:#22c55e;      /* RT-Kritik grün */
+  --accent:#67e8f9; --live:#86efac; --chip:#141b24;
+  --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Inter,Segoe UI,Roboto,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Text", Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size:14px; -webkit-font-smoothing:antialiased}
 @media (max-width:420px){html,body{font-size:13px}}
 
-header{padding:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,15,20,.94));z-index:10}
-h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.3px}
+header{padding:16px 18px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,15,20,.94));backdrop-filter:saturate(180%) blur(8px);z-index:10}
+h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.2px}
 .stamp{font-size:12px;color:var(--muted);margin-top:2px}
 
-.container{padding:14px;max-width:1120px;margin:0 auto}
+.container{padding:16px 14px;max-width:1120px;margin:0 auto}
 .grid{display:grid;gap:12px}
-@media(min-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:1080px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
 
 .card{background:var(--card);border:1px solid var(--border);
-  border-radius:14px;padding:14px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
-
-.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
-.ch{font-size:17px;font-weight:900;letter-spacing:.2px}
+  border-radius:14px;padding:14px 14px 12px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+.ch{font-size:16px;font-weight:900;letter-spacing:.2px}
 .no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
-
 .now{font-weight:800;color:var(--live)}
 .time{color:var(--accent)}
 .muted{color:var(--muted)}
 .warn{color:#facc15}
-ul{padding-left:18px;margin:8px 0}
+ul{padding-left:18px;margin:8px 0 2px}
 .badge{display:inline-block;background:var(--chip);border:1px solid var(--border);
   padding:3px 8px;border-radius:10px;margin-right:6px;font-size:12px}
 .badge.gpt{color:var(--gpt); border-color:color-mix(in oklab, var(--gpt) 60%, #000)}
@@ -50,6 +45,7 @@ ul{padding-left:18px;margin:8px 0}
 .badge.rtC{color:var(--rtC); border-color:color-mix(in oklab, var(--rtC) 60%, #000)}
 .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .small{font-size:12px;color:var(--muted);margin-top:6px}
+.aside{display:none} /* Platzhalter für künftige Live-Interesse */
 </style>
 </head>
 <body>
