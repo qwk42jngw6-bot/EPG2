@@ -1,15 +1,16 @@
-// /api/now.js — Vercel Serverless (Node 18), kein API-Key nötig
+// /api/now.js — Node 18, keine externen Pakete
 const SOURCE = "https://raw.githubusercontent.com/globetvapp/epg/main/Germany/germany2.xml";
 const MIRRORS = [
   u => "https://r.jina.ai/http/" + u.replace(/^https?:\/\//,""),
   u => "https://r.jina.ai/https/" + u.replace(/^https?:\/\//,""),
 ];
 
+// === Deine Senderliste (unverändert) ===
 const CHANNELS = [
   {no:1, name:"ARD (Das Erste)", aliases:["Das Erste","ARD"]},
   {no:2, name:"ZDF", aliases:[]},
   {no:3, name:"RTL", aliases:["RTL Television"]},
-  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben"]},
+  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben","ProSieben HD"]}, // <— wichtig: keine "Fun"-Alias
   {no:5, name:"Sat.1", aliases:["Sat1","SAT.1"]},
   {no:6, name:"SWR", aliases:["SWR BW","SWR RP","SWR Fernsehen"]},
   {no:7, name:"Sky Sport F1 (Formel 1)", aliases:["Sky Sport F1","Sky Sport Formel 1"]},
@@ -57,7 +58,7 @@ const parseXmltvDate = (s) => {
   return new Date(iso);
 };
 
-// schlanker XMLTV-Parser (regex-basiert)
+// — schlanker XMLTV-Parser —
 const parseXmlLight = (xml) => {
   const body = (xml.match(/<tv[\s\S]*<\/tv>/i) || [xml])[0];
 
@@ -80,16 +81,28 @@ const parseXmlLight = (xml) => {
   return {channels, programmes};
 };
 
+// — Matching: ProSieben vs. ProSieben Fun sauber unterscheiden —
 const norm = s => (s||"").toLowerCase().replace(/\s+/g," ").trim();
+const isWordBoundary = (c) => !c || /[^a-z0-9]/.test(c);
 const bestMatchId = (wanted, idx) => {
   const targets = [wanted.name, ...(wanted.aliases||[])].map(norm);
-  let best = {score:0, id:null, matched:null};
+  let best = {score:0, id:null, matched:null, len:Infinity};
   for(const ch of idx){
     for(const cand of ch.names){
       const c = norm(cand);
       for(const t of targets){
-        let sc=0; if(c===t) sc=100; else if(c.startsWith(t)||t.startsWith(c)) sc=85; else if(c.includes(t)||t.includes(c)) sc=65;
-        if(sc>best.score) best = {score:sc, id:ch.id, matched:cand};
+        let sc = 0;
+        if(c === t) sc = 100;                              // exakte Übereinstimmung
+        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95; // „ProSieben“ vs „ProSieben HD“
+        else if (c === t.replace(/\s/g,"")) sc = 92;       // „prosieben“ vs „pro sieben“
+        else if (c.includes(t)) sc = 70;
+        // Wenn der Kandidat mit t beginnt, aber direkt ein Buchstabe folgt (z. B. „prosiebenfun“) -> stark abwerten
+        if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45);
+
+        // bessere (kürzere) Namen bei gleichem Score bevorzugen
+        if(sc > best.score || (sc === best.score && cand.length < best.len)){
+          best = {score:sc, id:ch.id, matched:cand, len:cand.length};
+        }
       }
     }
   }
@@ -111,24 +124,31 @@ export default async function handler(req, res){
     const xmlText = clean(await fetchXml());
     const {channels:index, programmes} = parseXmlLight(xmlText);
     const now = new Date();
+    const windowEnd = new Date(now.getTime() + 2*60*60*1000);
 
     const items = [];
     for(const w of CHANNELS){
       const match = bestMatchId(w, index);
-      if(!match){ items.push({no:w.no, channel:w.name, now:null}); continue; }
-      const list = programmes.filter(p => p.channel === match.id).sort((a,b)=>a.start-b.start);
-      const cur = list.find(p => p.start && p.stop && p.start <= now && now < p.stop);
+      if(!match){ items.push({no:w.no, channel:w.name, now:null, upcoming:[]}); continue; }
+
+      const list = programmes
+        .filter(p => p.channel === match.id && p.start && p.stop)
+        .sort((a,b)=>a.start-b.start);
+
+      const cur = list.find(p => p.start <= now && now < p.stop) || null;
+      const upc = list.filter(p => p.start >= now && p.start <= windowEnd)
+                      .slice(0,5)
+                      .map(p => ({ title: p.title||"", start: p.start.toISOString(), stop: p.stop.toISOString() }));
+
       items.push({
         no: w.no,
         channel: w.name,
         matched: match.matched,
-        now: cur ? {
-          title: cur.title || "",
-          start: cur.start?.toISOString() || null,
-          stop:  cur.stop?.toISOString()  || null
-        } : null
+        now: cur ? { title: cur.title||"", start: cur.start.toISOString(), stop: cur.stop.toISOString() } : null,
+        upcoming: upc
       });
     }
+
     res.status(200).json({ts: new Date().toISOString(), items});
   }catch(e){
     res.status(500).json({error: String(e?.message || e)});
