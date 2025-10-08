@@ -1,4 +1,4 @@
-// /api/now.js — Node 18, keine externen Pakete
+// /api/now.js — Node 18
 const SOURCE = "https://raw.githubusercontent.com/globetvapp/epg/main/Germany/germany2.xml";
 const MIRRORS = [
   u => "https://r.jina.ai/http/" + u.replace(/^https?:\/\//,""),
@@ -6,7 +6,7 @@ const MIRRORS = [
 ];
 const OMDB = process.env.OMDB_KEY || "a9a9973d";
 
-// Senderliste (fixe Sortierung)
+/* ===== feste Sender-Reihenfolge ===== */
 const CHANNELS = [
   {no:1, name:"ARD (Das Erste)", aliases:["Das Erste","ARD"]},
   {no:2, name:"ZDF", aliases:[]},
@@ -45,12 +45,12 @@ const CHANNELS = [
   {no:35, name:"MTV", aliases:["MTV Germany","MTV HD"]},
 ];
 
+/* ===== helpers ===== */
 const cors = (res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 };
-
 const clean = (t) => t.replace(/^\uFEFF/, "").replace(/\u00A0/g, " ").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 const parseXmltvDate = (s) => {
   const m = s?.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+\-]\d{4}))?/);
@@ -58,8 +58,7 @@ const parseXmltvDate = (s) => {
   const iso = `${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}${m[7]? (m[7].slice(0,3)+":"+m[7].slice(3)) : ""}`;
   return new Date(iso);
 };
-
-// leichter XMLTV-Parser
+// Light-XMLTV-Parser
 const parseXmlLight = (xml) => {
   const body = (xml.match(/<tv[\s\S]*<\/tv>/i) || [xml])[0];
 
@@ -82,7 +81,7 @@ const parseXmlLight = (xml) => {
   return {channels, programmes};
 };
 
-// Matching Kanal-ID
+// Kanal-Matching: „ProSieben“ ≠ „ProSieben Fun“
 const norm = s => (s||"").toLowerCase().replace(/\s+/g," ").trim();
 const isWordBoundary = (c) => !c || /[^a-z0-9]/.test(c);
 const bestMatchId = (wanted, idx) => {
@@ -97,7 +96,7 @@ const bestMatchId = (wanted, idx) => {
         else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;
         else if (c === t.replace(/\s/g,"")) sc = 92;
         else if (c.includes(t)) sc = 70;
-        if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45); // „prosiebenfun“ abwerten
+        if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45);
         if(sc > best.score || (sc === best.score && cand.length < best.len)){
           best = {score:sc, id:ch.id, matched:cand, len:cand.length};
         }
@@ -115,17 +114,23 @@ async function fetchXml(){
   throw new Error("EPG Quelle nicht erreichbar");
 }
 
-// ---- OMDb-Helfer: Titel normalisieren, Suchen & Fallbacks ----
+/* ===== OMDb: robustes Matching ===== */
+// manuelle Alias-Fälle
+const SPECIAL_MAP = {
+  "the yacht": "stowaway",
+  "sinola": "joe kidd"
+};
 const stripTitle = (t) => (t||"")
   .replace(/[„“"']/g," ")
-  .replace(/\s*[-–:]\s*.*$/, "")        // nach '-' oder ':' alles weg (Untertitel)
-  .replace(/\s*\(.*?\)\s*$/, "")        // Klammerzusatz am Ende
+  .replace(/\s*[-–:]\s*.*$/, "")
+  .replace(/\s*\(.*?\)\s*$/, "")
   .replace(/\s+/g," ")
   .trim();
-
-const SPECIAL_MAP = {
-  // manuelle Sonderfälle
-  "the yacht": "stowaway"
+const tokenize = (t) => stripTitle(t).toLowerCase().split(/\s+/).filter(w=>w.length>2);
+const overlap = (a,b) => {
+  const A=new Set(a), B=new Set(b);
+  let inter=0; for(const x of A) if(B.has(x)) inter++;
+  return inter/Math.max(1,Math.min(A.size,B.size));
 };
 
 async function omdbFindSmart(title){
@@ -135,34 +140,47 @@ async function omdbFindSmart(title){
     const r = await fetch(url);
     return r.ok ? r.json() : null;
   };
-
-  const candidates = [];
   const base = stripTitle(title);
-  if(base) candidates.push(base);
-  const lower = base.toLowerCase();
-  if(SPECIAL_MAP[lower]) candidates.push(SPECIAL_MAP[lower]);
+  if(!base) return null;
 
-  // 1) exakter Titel (movie/series)
-  for(const cand of candidates){
-    for (const type of ["movie","series"]) {
-      const j = await call(`t=${encodeURIComponent(cand)}&type=${type}`);
-      if(j && j.Response !== "False") return j;
-    }
-  }
-  // 2) Suche (liefert evtl. englische Titel) → bestes Detail
-  for(const cand of candidates){
-    const s = await call(`s=${encodeURIComponent(cand)}`);
-    if (s && s.Response !== "False" && Array.isArray(s.Search) && s.Search.length){
-      // Priorität: exact-ish match, dann höchstes Jahr
-      s.Search.sort((a,b)=> (b.Year||"").localeCompare(a.Year||""));
-      const best = s.Search[0];
-      if(best?.imdbID){
-        const d = await call(`i=${encodeURIComponent(best.imdbID)}`);
-        if(d && d.Response !== "False") return d;
+  const cands = [base];
+  const sp = SPECIAL_MAP[base.toLowerCase()];
+  if (sp) cands.unshift(sp); // Alias ganz vorne testen
+
+  // 1) exakte Detailabfrage (movie/series)
+  for(const cand of cands){
+    for(const type of ["movie","series"]){
+      const d = await call(`t=${encodeURIComponent(cand)}&type=${type}`);
+      if(d && d.Response!=="False"){
+        // Sicherheitscheck: Wortüberlappung mit Anfrage ≥ 0.5
+        if(overlap(tokenize(base), tokenize(d.Title)) >= 0.5 || cand===sp){
+          return d;
+        }
       }
     }
   }
-  return null;
+
+  // 2) Suchabfrage → bestes Detail (nach Jahr + Overlap)
+  for(const cand of cands){
+    const s = await call(`s=${encodeURIComponent(cand)}`);
+    if(s && s.Response!=="False" && Array.isArray(s.Search) && s.Search.length){
+      // wähle Ergebnis mit bester Token-Überlappung, tie-break: jüngstes Jahr
+      let best=null, bestScore=0;
+      for(const hit of s.Search){
+        const ov = overlap(tokenize(base), tokenize(hit.Title));
+        const yr = parseInt((hit.Year||"").slice(0,4))||0;
+        const score = ov*100 + yr/10000;
+        if(score>bestScore){ bestScore=score; best=hit; }
+      }
+      if(best?.imdbID){
+        const d = await call(`i=${encodeURIComponent(best.imdbID)}`);
+        if(d && d.Response!=="False" && (overlap(tokenize(base), tokenize(d.Title)) >= 0.5 || cand===sp)){
+          return d;
+        }
+      }
+    }
+  }
+  return null; // lieber kein Rating als falsches
 }
 
 const score = (imdb, rtU, rtC) => {
@@ -178,6 +196,7 @@ const score = (imdb, rtU, rtC) => {
   return Math.round(s)/10;
 };
 
+/* ===== handler ===== */
 export default async function handler(req, res){
   cors(res);
   if(req.method === "OPTIONS") return res.status(204).end();
@@ -207,7 +226,6 @@ export default async function handler(req, res){
         next: nxt
       };
 
-      // Bewertungen + Originaltitel
       if (OMDB && entry.now?.title) {
         try {
           const d = await omdbFindSmart(entry.now.title);
