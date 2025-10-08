@@ -4,13 +4,14 @@ const MIRRORS = [
   u => "https://r.jina.ai/http/" + u.replace(/^https?:\/\//,""),
   u => "https://r.jina.ai/https/" + u.replace(/^https?:\/\//,""),
 ];
+const OMDB = process.env.OMDB_KEY || "";
 
-// === Deine Senderliste (unverändert) ===
+// === Deine Senderliste ===
 const CHANNELS = [
   {no:1, name:"ARD (Das Erste)", aliases:["Das Erste","ARD"]},
   {no:2, name:"ZDF", aliases:[]},
   {no:3, name:"RTL", aliases:["RTL Television"]},
-  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben","ProSieben HD"]}, // <— wichtig: keine "Fun"-Alias
+  {no:4, name:"ProSieben", aliases:["Pro 7","Prosieben","ProSieben HD"]},
   {no:5, name:"Sat.1", aliases:["Sat1","SAT.1"]},
   {no:6, name:"SWR", aliases:["SWR BW","SWR RP","SWR Fernsehen"]},
   {no:7, name:"Sky Sport F1 (Formel 1)", aliases:["Sky Sport F1","Sky Sport Formel 1"]},
@@ -58,7 +59,6 @@ const parseXmltvDate = (s) => {
   return new Date(iso);
 };
 
-// — schlanker XMLTV-Parser —
 const parseXmlLight = (xml) => {
   const body = (xml.match(/<tv[\s\S]*<\/tv>/i) || [xml])[0];
 
@@ -81,7 +81,6 @@ const parseXmlLight = (xml) => {
   return {channels, programmes};
 };
 
-// — Matching: ProSieben vs. ProSieben Fun sauber unterscheiden —
 const norm = s => (s||"").toLowerCase().replace(/\s+/g," ").trim();
 const isWordBoundary = (c) => !c || /[^a-z0-9]/.test(c);
 const bestMatchId = (wanted, idx) => {
@@ -92,14 +91,11 @@ const bestMatchId = (wanted, idx) => {
       const c = norm(cand);
       for(const t of targets){
         let sc = 0;
-        if(c === t) sc = 100;                              // exakte Übereinstimmung
-        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95; // „ProSieben“ vs „ProSieben HD“
-        else if (c === t.replace(/\s/g,"")) sc = 92;       // „prosieben“ vs „pro sieben“
+        if(c === t) sc = 100;
+        else if (c.startsWith(t) && isWordBoundary(c[t.length])) sc = 95;
+        else if (c === t.replace(/\s/g,"")) sc = 92;
         else if (c.includes(t)) sc = 70;
-        // Wenn der Kandidat mit t beginnt, aber direkt ein Buchstabe folgt (z. B. „prosiebenfun“) -> stark abwerten
         if (c.startsWith(t) && !isWordBoundary(c[t.length])) sc = Math.min(sc, 45);
-
-        // bessere (kürzere) Namen bei gleichem Score bevorzugen
         if(sc > best.score || (sc === best.score && cand.length < best.len)){
           best = {score:sc, id:ch.id, matched:cand, len:cand.length};
         }
@@ -147,6 +143,32 @@ export default async function handler(req, res){
         now: cur ? { title: cur.title||"", start: cur.start.toISOString(), stop: cur.stop.toISOString() } : null,
         upcoming: upc
       });
+    }
+
+    // === Bewertungsteil ===
+    if (OMDB) {
+      for (const item of items) {
+        const t = item.now?.title;
+        if (!t) continue;
+        try {
+          const resp = await fetch(`https://www.omdbapi.com/?t=${encodeURIComponent(t)}&apikey=${OMDB}`);
+          const d = await resp.json();
+          if (d && d.Response !== "False") {
+            const imdb = parseFloat(d.imdbRating) || null;
+            let rtUser = null, rtCritic = null;
+            for (const r of d.Ratings || []) {
+              if (r.Source === "Rotten Tomatoes") rtCritic = parseInt(r.Value) || null;
+              if (r.Source === "Rotten Tomatoes - Audience") rtUser = parseInt(r.Value) || null;
+            }
+            if (!rtUser && rtCritic) rtUser = rtCritic;
+            const gptScore = (rtUser ? 0.7*rtUser : 0) + (rtCritic ? 0.15*rtCritic : 0) + (imdb ? 0.15*imdb*10 : 0);
+            item.rating = {
+              imdb, rtUser, rtCritic,
+              gpt: gptScore ? Math.round(gptScore)/10 : null
+            };
+          }
+        } catch {}
+      }
     }
 
     res.status(200).json({ts: new Date().toISOString(), items});
