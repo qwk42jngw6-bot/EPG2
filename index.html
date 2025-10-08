@@ -6,52 +6,57 @@
 <title>EPG – Jetzt (Germany 2)</title>
 <style>
 :root{
-  --bg:#0b0d10; --card:#12151a; --border:#1f232b;
-  --text:#e7ecf2; --muted:#9aa6b2;
-  --accent:#5eead4;   /* Zeiten */
-  --good:#86efac;     /* aktueller Titel */
-  --chip:#1a222d;     /* Chips/Badges */
+  --bg:#0b0f14; --card:#121922; --border:#1f2733;
+  --text:#e8edf3; --muted:#9aa6b2;
+  --accent:#67e8f9;   /* Zeiten: cyan */
+  --live:#86efac;     /* aktueller Titel */
+  --chip:#141b24;     /* Chips/Badges */
+  --gpt:#60a5fa;      /* blau */
+  --imdb:#facc15;     /* gold */
+  --rt:#ef4444;       /* rot */
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);
-  font-family:system-ui,Segoe UI,Inter,Roboto,sans-serif;font-size:14px; -webkit-font-smoothing:antialiased}
+  font-family:system-ui,Inter,Segoe UI,Roboto,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
 @media (max-width:420px){html,body{font-size:13px}}
 
-header{padding:12px 14px;border-bottom:1px solid var(--border);
-  position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,13,16,.92));z-index:10}
-h1{margin:0 0 2px 0;font-size:18px;font-weight:800;letter-spacing:.2px}
-.stamp{font-size:12px;color:var(--muted)}
+header{padding:16px;border-bottom:1px solid var(--border);position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(11,15,20,.94));z-index:10}
+h1{margin:0;font-size:22px;font-weight:900;letter-spacing:.3px}
+.stamp{font-size:12px;color:var(--muted);margin-top:2px}
 
-.container{padding:12px;max-width:1100px;margin:0 auto}
-.grid{display:grid;gap:10px}
+.container{padding:14px;max-width:1120px;margin:0 auto}
+.grid{display:grid;gap:12px}
 @media(min-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:1080px){.grid{grid-template-columns:repeat(3,1fr)}}
 
 .card{background:var(--card);border:1px solid var(--border);
-  border-radius:12px;padding:12px;box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
+  border-radius:14px;padding:14px;box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
 
-.top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .logo{
-  width:28px;height:28px;border-radius:6px;overflow:hidden;
+  width:32px;height:32px;border-radius:8px;overflow:hidden;
   display:inline-flex;align-items:center;justify-content:center;
-  background:#0e1620;border:1px solid var(--border);flex:0 0 28px
+  background:#0e1620;border:1px solid var(--border);flex:0 0 32px
 }
 .logo img{width:100%;height:100%;object-fit:contain;display:block}
 .logo .mono{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:800;color:#cfe7ff;letter-spacing:.3px}
+  font-size:12px;font-weight:900;letter-spacing:.3px;color:#dbeafe}
 
 .header-line{display:flex;align-items:baseline;justify-content:space-between;width:100%}
-.ch{font-size:16px;font-weight:900;letter-spacing:.2px}
+.ch{font-size:17px;font-weight:900;letter-spacing:.2px}
 .no{font-size:11px;color:var(--muted);background:var(--chip);padding:2px 8px;border-radius:999px;border:1px solid var(--border)}
 
-.now{font-weight:700;color:var(--good)}
+.now{font-weight:800;color:var(--live)}
 .time{color:var(--accent)}
 .muted{color:var(--muted)}
 .warn{color:#facc15}
-ul{padding-left:16px;margin:6px 0}
-.rating{margin-top:6px;font-size:12px;color:#cbd5e1}
+ul{padding-left:18px;margin:8px 0}
 .badge{display:inline-block;background:var(--chip);border:1px solid var(--border);
-  padding:2px 6px;border-radius:8px;margin-right:6px}
+  padding:3px 8px;border-radius:10px;margin-right:6px;font-size:12px}
+.badge.gpt{background:color-mix(in oklab, var(--gpt) 20%, transparent); border-color:color-mix(in oklab, var(--gpt) 60%, #000); color:var(--gpt)}
+.badge.imdb{background:color-mix(in oklab, var(--imdb) 20%, transparent); border-color:color-mix(in oklab, var(--imdb) 60%, #000); color:#fcd34d}
+.badge.rt{background:color-mix(in oklab, var(--rt) 20%, transparent); border-color:color-mix(in oklab, var(--rt) 60%, #000); color:#f87171}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 </style>
 </head>
 <body>
@@ -70,91 +75,37 @@ const $=s=>document.querySelector(s);
 const stamp=$("#stamp"),root=$("#root");
 const tt=d=>new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-// 1) Logo-Quellen: zuerst /logos/<slug>.png aus deinem Repo,
-//    sonst (optional) direkte URL aus dieser Map (kannst du später füllen/ändern).
-const CHANNEL_LOGOS = {
-  "ARD (Das Erste)": "",   // wenn leer -> /logos/ard-das-erste.png versucht, sonst Monogramm
-  "ZDF": "",
-  "RTL": "",
-  "ProSieben": "",
-  "Sat.1": "",
-  "SWR": "",
-  "Sky Sport F1 (Formel 1)": "",
-  "Motorvision TV": "",
-  "Sky Cinema Highlights": "",
-  "Sky Cinema Action": "",
-  "Sky Cinema Primera": "",
-  "Sky Cinema Classic": "",
-  "Sky Cinema Family": "",
-  "Warner Bros. (Film & Serie)": "",
-  "VOX": "",
-  "RTL Zwei": "",
-  "Kabel Eins": "",
-  "Kabel Eins Doku": "",
-  "BBC Food": "",
-  "DMAX": "",
-  "BBC Top Gear": "",
-  "N24 Doku": "",
-  "Discovery Channel": "",
-  "Sky Documentaries": "",
-  "History Channel": "",
-  "Sky Nature": "",
-  "Terra Mater": "",
-  "National Geographic": "",
-  "National Geo Wild": "",
-  "Animal Planet": "",
-  "Welt": "",
-  "N-TV": "",
-  "Tagesschau24": "",
-  "Nick (Nickelodeon)": "",
-  "MTV": ""
-};
-
-// Slug für Dateinamen /logos/<slug>.png
+// Logo-Handling: zuerst /logos/<slug>.png; sonst Monogramm mit Auto-Farbe
 const slug = s => s.toLowerCase()
   .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
   .replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
-
-// Liefert Logo-URL oder "" (dann Monogramm nutzen)
-function getLogoUrl(channel){
-  const direct = CHANNEL_LOGOS[channel] || "";
-  if (direct) return direct;
-  // versuche statische Datei im Repo
-  return "/logos/" + slug(channel) + ".png";
-}
-
+const hue = s => Math.abs([...s].reduce((a,c)=>a+c.charCodeAt(0),0))%360;
 function logoEl(channel){
-  const url = getLogoUrl(channel);
-  const el = document.createElement("div");
-  el.className = "logo";
-  const img = new Image();
-  img.src = url;
-  img.alt = channel + " Logo";
-  // Fallback: Monogramm (2 Buchstaben)
-  const mono = document.createElement("div");
-  mono.className = "mono";
-  mono.textContent = channel.replace(/[^A-ZÄÖÜa-zäöü0-9]/g," ").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
-  // Wenn Bild lädt → anzeigen, sonst Monogramm
-  img.onload = ()=>{ el.innerHTML=""; el.appendChild(img); };
-  img.onerror = ()=>{ el.innerHTML=""; el.appendChild(mono); };
-  // zunächst Monogramm, bis Bild (falls vorhanden) geladen ist
+  const el=document.createElement("div"); el.className="logo";
+  const url="/logos/"+slug(channel)+".png";
+  const img=new Image(); img.src=url; img.alt=channel+" Logo";
+  const mono=document.createElement("div"); mono.className="mono";
+  mono.textContent=channel.replace(/[^A-Za-z0-9]/g," ").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  mono.style.background=`oklch(0.25 0.05 ${hue(channel)} / 1)`;
+  mono.style.color=`oklch(0.88 0.03 ${Math.abs(hue(channel)-180)} / 1)`;
+  img.onload=()=>{el.innerHTML="";el.appendChild(img);};
+  img.onerror=()=>{el.innerHTML="";el.appendChild(mono);};
   el.appendChild(mono);
   return el;
 }
 
-function upcomingList(arr){
-  if(!arr||!arr.length) return '<div class="muted">Keine weiteren Sendungen (2 h).</div>';
-  return `<div><span class="badge">Nächste 2 Stunden</span>
-    <ul>${arr.map(p=>`<li>${p.title} <span class="time">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("")}</ul></div>`;
+function nextList(arr){
+  if(!arr||!arr.length) return '<div class="muted">Keine weiteren Sendungen.</div>';
+  return `<ul>${arr.slice(0,2).map(p=>`<li>${p.title} <span class="time">(${tt(p.start)}–${tt(p.stop)})</span></li>`).join("")}</ul>`;
 }
-function ratingBlock(r){
+function ratings(r){
   if(!r) return "";
   const chips=[];
-  if(r.gpt!=null) chips.push(`<span class="badge">GPT ${r.gpt}/10</span>`);
-  if(r.imdb!=null) chips.push(`<span class="badge">IMDb ${r.imdb}</span>`);
-  if(r.rtUser!=null) chips.push(`<span class="badge">RT-User ${r.rtUser}%</span>`);
-  if(r.rtCritic!=null) chips.push(`<span class="badge">RT-Kritik ${r.rtCritic}%</span>`);
-  return chips.length ? `<div class="rating">${chips.join("")}</div>` : "";
+  if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
+  if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
+  if(r.rtUser!=null) chips.push(`<span class="badge rt">RT-User ${r.rtUser}%</span>`);
+  if(r.rtCritic!=null) chips.push(`<span class="badge rt">RT-Kritik ${r.rtCritic}%</span>`);
+  return chips.length? `<div class="row">${chips.join("")}</div>` : "";
 }
 
 async function load(){
@@ -167,7 +118,7 @@ async function load(){
     for(const it of j.items){
       const card=document.createElement("div"); card.className="card";
 
-      // Kopfzeile mit Logo + Name + #nr
+      // Kopf
       const top=document.createElement("div"); top.className="top";
       top.appendChild(logoEl(it.channel));
       const right=document.createElement("div"); right.className="header-line";
@@ -180,8 +131,10 @@ async function load(){
       }else{
         const when = it.now.start && it.now.stop ? ` <span class="time">(${tt(it.now.start)}–${tt(it.now.stop)})</span>` : "";
         card.insertAdjacentHTML("beforeend", `<div class="now">${it.now.title}${when}</div>`);
-        card.insertAdjacentHTML("beforeend", upcomingList(it.upcoming));
-        card.insertAdjacentHTML("beforeend", ratingBlock(it.rating));
+        // nur die nächsten 2 Sendungen anzeigen
+        card.insertAdjacentHTML("beforeend", nextList(it.next));
+        // Ratings farbig
+        card.insertAdjacentHTML("beforeend", ratings(it.rating));
       }
       root.appendChild(card);
     }
