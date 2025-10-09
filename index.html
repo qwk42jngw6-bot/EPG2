@@ -1,101 +1,70 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>EPG – Jetzt</title>
   <style>
-    :root{
-      --bg:#0f1419;--card:#171c22;--bord:#2a2f35;--fg:#e5e7eb;--mut:#9ca3af;--ok:#22c55e;--warn:#f59e0b;--accent:#60a5fa
-    }
+    :root{--bg:#0f1419;--card:#151b23;--fg:#e5e7eb;--muted:#9ca3af;--accent:#60a5fa;--border:#263140;}
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif}
-    .wrap{max-width:1280px;margin:0 auto;padding:16px}
-    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
-    .card{background:var(--card);border:1px solid var(--bord);border-radius:10px;padding:12px}
-    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--bord)}
-    .ch{font-weight:700}
-    .no{font-size:12px;color:#93c5fd;background:#0b2546;padding:2px 6px;border-radius:999px}
-    .now .ttl{font-weight:600;margin-bottom:2px}
-    .time{color:var(--mut);font-size:12px}
-    .mut{color:var(--mut)}
-    .next{margin-top:8px;padding-top:6px;border-top:1px solid var(--bord)}
-    .next-item{display:flex;justify-content:space-between;gap:8px;font-size:12px}
-    .stamp{color:var(--mut);font-size:12px;margin:8px 0 4px 2px}
-    .err{background:#7f1d1d;color:#fecaca;border:1px solid #fecaca33;padding:12px;border-radius:8px}
-    @media (min-width:1100px){.wrap{padding:20px}.grid{gap:14px}}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,Segoe UI,Roboto,Inter,sans-serif}
+    main{max-width:1280px;margin:0 auto;padding:16px}
+    .stamp{font-size:12px;color:var(--muted);margin:4px 0 12px}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px}
+    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .name{font-weight:700}
+    .no{font-size:12px;color:#93c5fd;background:#0b3b75;padding:2px 7px;border-radius:999px}
+    .now{margin-bottom:8px}
+    .title{font-weight:600}
+    .time{font-size:12px;color:var(--muted)}
+    .empty{color:#64748b;font-style:italic}
+    .next{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
+    .row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:4px}
+    .err{background:#3a0f13;color:#fecaca;border:1px solid #7f1d1d;border-radius:10px;padding:16px}
   </style>
 </head>
 <body>
-  <main class="wrap">
-    <div id="stamp" class="stamp">Lade…</div>
-    <div id="content"><div class="card"><div class="mut">Lade Programm…</div></div></div>
-  </main>
+<main>
+  <div id="stamp" class="stamp">Lade…</div>
+  <div id="host"></div>
+</main>
+<script>
+const API = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
 
-  <script>
-  // *** nur hier anpassen, falls du später die Domain änderst ***
-  const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
-
-  // feste Reihenfolge (35 Sender)
-  const CHANNELS = [
-    {no:1,name:"ARD (Das Erste)"},{no:2,name:"ZDF"},{no:3,name:"RTL"},
-    {no:4,name:"ProSieben"},{no:5,name:"Sat.1"},{no:6,name:"SWR"},
-    {no:7,name:"Sky Sport F1 (Formel 1)"},{no:8,name:"Motorvision TV"},
-    {no:9,name:"Sky Cinema Highlights"},{no:10,name:"Sky Cinema Action"},
-    {no:11,name:"Sky Cinema Primera"},{no:12,name:"Sky Cinema Classic"},
-    {no:13,name:"Sky Cinema Family"},{no:14,name:"Warner Bros. (Film & Serie)"},
-    {no:15,name:"VOX"},{no:16,name:"RTL Zwei"},{no:17,name:"Kabel Eins"},
-    {no:18,name:"Kabel Eins Doku"},{no:19,name:"BBC Food"},{no:20,name:"DMAX"},
-    {no:21,name:"BBC Top Gear"},{no:22,name:"N24 Doku"},{no:23,name:"Discovery Channel"},
-    {no:24,name:"Sky Documentaries"},{no:25,name:"History Channel"},
-    {no:26,name:"Sky Nature"},{no:27,name:"Terra Mater"},
-    {no:28,name:"National Geographic"},{no:29,name:"National Geo Wild"},
-    {no:30,name:"Animal Planet"},{no:31,name:"Welt"},{no:32,name:"N-TV"},
-    {no:33,name:"Tagesschau24"},{no:34,name:"Nick (Nickelodeon)"},{no:35,name:"MTV"}
-  ];
-
-  const fmt = t => {
-    const d = new Date(t);
-    return isFinite(d) ? d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}) : "–";
-  };
-
-  async function loadEPG(){
-    const root = document.getElementById('content');
-    try{
-      const r = await fetch(`${API_BASE}/api/now`, {cache:'no-store'});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-
-      const map = new Map((j.items||[]).map(x=>[x.no,x]));
-      const cards = CHANNELS.map(ch=>{
-        const d = map.get(ch.no) || {no:ch.no, channel:ch.name, now:null, next:[]};
-        const nowHtml = d.now
-          ? `<div class="ttl">${d.now.title}</div><div class="time">${fmt(d.now.start)} – ${fmt(d.now.stop)}</div>`
-          : `<div class="mut">Keine aktuelle Sendung</div>`;
-        const nextHtml = (d.next||[]).slice(0,2).map(n =>
-          `<div class="next-item"><span>${n.title}</span><span class="time">${fmt(n.start)}</span></div>`
-        ).join('');
-        return `
-          <div class="card">
-            <div class="head"><div class="ch">${d.channel}</div><div class="no">#${d.no}</div></div>
-            <div class="now">${nowHtml}</div>
-            ${nextHtml ? `<div class="next">${nextHtml}</div>` : ``}
-          </div>`;
-      }).join('');
-
-      root.innerHTML = `<div class="grid">${cards}</div>`;
-      const stamp = document.getElementById('stamp');
-      stamp.textContent = `Stand: ${new Date(j.ts||Date.now()).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
-    }catch(err){
-      root.innerHTML = `<div class="err">Fehler: ${err.message||err}</div>`;
-    }
+async function loadEPG(){
+  try{
+    const r = await fetch(`${API}/api/now`);
+    const data = await r.json();
+    render(data);
+  }catch(e){
+    document.getElementById("host").innerHTML = `<div class="err">Fehler: ${e.message}</div>`;
   }
+}
+function hhmm(s){ const d=new Date(s); return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
+function render(data){
+  const items = data.items||[];
+  const cards = items.map(it => {
+    const now = it.now ? `
+      <div class="now">
+        <div class="title">${it.now.title}</div>
+        <div class="time">${hhmm(it.now.start)} – ${hhmm(it.now.stop)}</div>
+      </div>` : `<div class="empty">Keine aktuelle Sendung</div>`;
+    const next = (it.next && it.next.length) ? `
+      <div class="next">
+        ${it.next.slice(0,2).map(n=>`<div class="row"><span>${n.title}</span><span>${hhmm(n.start)}</span></div>`).join("")}
+      </div>` : "";
+    return `<div class="card">
+      <div class="head"><div class="name">${it.channel}</div><div class="no">#${it.no}</div></div>
+      ${now}${next}
+    </div>`;
+  }).join("");
+  document.getElementById("host").innerHTML = `<div class="grid">${cards}</div>`;
+  if (data.ts) document.getElementById("stamp").textContent = "Stand: " + hhmm(data.ts);
+}
 
-  loadEPG();
-  setInterval(loadEPG, 5*60*1000);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) loadEPG(); });
-
-  // WICHTIG: Kein <script src="worker.js"> einbinden – Worker wird nur via fetch() genutzt.
-  </script>
+loadEPG();
+setInterval(loadEPG, 5*60*1000);
+</script>
 </body>
 </html>
