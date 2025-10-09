@@ -1,192 +1,259 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="dark">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EPG – Jetzt (Germany 2)</title>
-
-<!-- Externes Design-Paket (ohne Build): Pico.css -->
-<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-
-<style>
-/* ==== Feinschliff auf Basis Pico (Apple-clean) ==== */
-:root{
-  --bg:#0c1015; --card:#111824; --card2:#0f1621; --border:#1d2735;
-  --text:#e8edf3; --muted:#9aa6b2;
-  --accent:#67e8f9; --live:#86efac;
-  --chip:#121a26;
-  --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
-}
-:root, [data-theme="dark"]{
-  --pico-background-color: var(--bg);
-  --pico-color: var(--text);
-  --pico-muted-color: var(--muted);
-  --pico-card-background-color: var(--card);
-  --pico-border-color: var(--border);
-  --pico-form-element-background-color: var(--card2);
-}
-html,body{font-family:Inter, ui-sans-serif, -apple-system, "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;}
-.container{max-width:1120px;margin-inline:auto;padding:1rem 1rem 2.25rem;}
-header.header{
-  position:sticky; top:0; z-index:10;
-  backdrop-filter:saturate(180%) blur(8px);
-  background:linear-gradient(180deg, rgba(12,16,21,.9), rgba(12,16,21,.75));
-  border-bottom:1px solid var(--border);
-}
-h1{margin:0 0 .25rem 0; font-weight:800; letter-spacing:.2px}
-#stamp{font-size:.85rem; color:var(--muted)}
-
-.grid{display:grid; gap:14px}
-@media (min-width:760px){ .grid{grid-template-columns:repeat(2, minmax(0,1fr));} }
-@media (min-width:1100px){ .grid{grid-template-columns:repeat(3, minmax(0,1fr));} }
-
-.card{
-  border:1px solid var(--border); border-radius:14px;
-  background:linear-gradient(180deg,var(--card),var(--card2));
-  padding:14px 14px 12px; box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.03);
-  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
-}
-.card:hover{ transform: translateY(-2px); border-color:#2b3a50; box-shadow: 0 16px 34px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05); }
-
-.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.5rem}
-.ch{font-weight:800; font-size:1.05rem}
-.no{font-size:.72rem; color:var(--muted); background:var(--chip); border:1px solid var(--border);
-    padding:.18rem .55rem; border-radius:9999px}
-
-.now{font-weight:800; color:var(--live)}
-.time{color:var(--accent)}
-.muted{color:var(--muted)}
-.warn{color:#facc15}
-
-ul{margin:.6rem 0 .2rem .2rem}
-ul li{margin:.15rem 0}
-
-.badges{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.55rem}
-.badge{
-  font-size:.78rem; padding:.28rem .55rem; border-radius:.6rem; border:1px solid var(--border);
-  background:var(--chip); line-height:1;
-}
-.badge.gpt{ color:var(--gpt); border-color: color-mix(in oklab, var(--gpt) 60%, #000) }
-.badge.imdb{ color:var(--imdb); border-color: color-mix(in oklab, var(--imdb) 60%, #000) }
-.badge.rtU{ color:var(--rtU); border-color: color-mix(in oklab, var(--rtU) 60%, #000) }
-.badge.rtC{ color:var(--rtC); border-color: color-mix(in oklab, var(--rtC) 60%, #000) }
-
-.small{font-size:.8rem; color:var(--muted); margin-top:.4rem}
-hr.sep{border-color:var(--border); opacity:.5; margin:.6rem 0}
-
-/* Auto-Refresh Indicator */
-.refresh-indicator {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  background: var(--live);
-  border-radius: 50%;
-  margin-right: 8px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-/* Empty state styling */
-.empty-program {
-  font-style: italic;
-  color: var(--muted);
-  margin: 0.5rem 0;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPG-2 - TV Programm</title>
+    
+    <!-- Tailwind CSS für modernes Design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f172a;
+        }
+        
+        .channel-card {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #334155;
+            transition: all 0.2s ease;
+        }
+        
+        .channel-card:hover {
+            transform: translateY(-2px);
+            border-color: #475569;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .current-show {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        }
+        
+        .live-indicator {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
 </head>
-<body>
+<body class="min-h-screen text-gray-100">
+    <!-- Header -->
+    <header class="border-b border-gray-700 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                        EPG-2
+                    </h1>
+                    <p class="text-sm text-gray-400 mt-1" id="timestamp">
+                        Lade Programm...
+                    </p>
+                </div>
+                <button onclick="loadEPG()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Aktualisieren</span>
+                </button>
+            </div>
+        </div>
+    </header>
 
-<header class="header">
-  <div class="container">
-    <h1>EPG – Jetzt</h1>
-    <div id="stamp"><span class="refresh-indicator"></span>Lade aktuelle Sendungen...</div>
-  </div>
-</header>
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-blue-400" id="total-channels">-</div>
+                <div class="text-gray-400 text-sm">Kanäle</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-green-400" id="live-channels">-</div>
+                <div class="text-gray-400 text-sm">Aktive Sendungen</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-2xl font-bold text-purple-400" id="last-update">-</div>
+                <div class="text-gray-400 text-sm">Letztes Update</div>
+            </div>
+        </div>
 
-<main class="container">
-  <div id="root" class="grid"></div>
-</main>
+        <!-- Channels Grid -->
+        <div id="channels-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Channels werden hier dynamisch eingefügt -->
+        </div>
 
-<script>
-const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
-const api = API_BASE + "/api/now";
-const REFRESH_INTERVAL = 300000; // 5 Minuten
+        <!-- Loading State -->
+        <div id="loading" class="text-center py-12">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p class="text-gray-400 mt-4">Lade TV-Programm...</p>
+        </div>
 
-const fmtTime = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+        <!-- Error State -->
+        <div id="error" class="hidden text-center py-12">
+            <div class="bg-red-900/50 border border-red-700 rounded-lg p-6 max-w-md mx-auto">
+                <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold text-red-300 mb-2" id="error-title">Fehler beim Laden</h3>
+                <p class="text-red-200 text-sm" id="error-message"></p>
+            </div>
+        </div>
+    </main>
 
-function nextList(arr){
-  if(!arr || !arr.length) return '<p class="muted" style="margin:.35rem 0 0">Keine weiteren Sendungen.</p>';
-  return `<ul>${arr.slice(0,2).map(p=>(
-    `<li>${p.title} <span class="time">(${fmtTime(p.start)}–${fmtTime(p.stop)})</span></li>`
-  )).join("")}</ul>`;
-}
-
-function ratings(r){
-  if(!r) return "";
-  const chips=[];
-  if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
-  if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
-  if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
-  if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
-  return chips.length ? `<div class="badges">${chips.join("")}</div>` : "";
-}
-
-async function load(){
-  const stamp = document.getElementById("stamp");
-  const root = document.getElementById("root");
-  
-  try{
-    const r = await fetch(api, {cache:"no-store"});
-    const j = await r.json();
-
-    stamp.innerHTML = `<span class="refresh-indicator"></span>Stand: ${new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"})}`;
-    root.innerHTML = "";
-
-    if (!j.items || j.items.length === 0) {
-      root.innerHTML = '<article class="card"><p class="muted">Keine Sendungen gefunden</p></article>';
-      return;
-    }
-
-    for (const it of j.items){
-      const card = document.createElement("article");
-      card.className = "card";
-
-      const head = `
-        <div class="top">
-          <div class="ch">${it.channel}</div>
-          <span class="no">#${it.no}</span>
-        </div>`;
-
-      // Korrekte Behandlung von null/undefined now
-      if (!it.now || !it.now.title) {
-        card.innerHTML = head + `<p class="empty-program">Derzeit keine Sendung</p>`;
-      } else {
-        const when = (it.now.start && it.now.stop) ? ` <span class="time">(${fmtTime(it.now.start)}–${fmtTime(it.now.stop)})</span>` : "";
-        card.innerHTML = head
-          + `<p class="now" style="margin:.15rem 0 .35rem">${it.now.title}${when}</p>`
-          + nextList(it.next)
-          + ratings(it.rating)
-          + (it.original ? `<div class="small">Original: ${it.original}</div>` : "");
-      }
-
-      root.appendChild(card);
-    }
-  }catch(e){
-    stamp.innerHTML = `<span class="warn">⚠️</span> Fehler: ${e?.message || e}`;
-    console.error('Load error:', e);
-  }
-}
-
-// Auto-Refresh
-load();
-setInterval(load, REFRESH_INTERVAL);
-</script>
+    <script>
+        const API_BASE = 'https://waterfall-epg.w2gy9ymm7y.workers.dev'
+        
+        async function loadEPG() {
+            showLoading()
+            hideError()
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/now`)
+                if (!response.ok) throw new Error(`HTTP ${response.status}`)
+                
+                const data = await response.json()
+                displayChannels(data)
+                updateStats(data)
+                
+            } catch (error) {
+                showError('Fehler beim Laden der Programm-Daten', error.message)
+            }
+        }
+        
+        function displayChannels(data) {
+            const container = document.getElementById('channels-container')
+            const channels = data.items || []
+            
+            if (channels.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <div class="bg-gray-800 rounded-lg p-8 max-w-md mx-auto">
+                            <svg class="w-12 h-12 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <h3 class="text-lg font-semibold text-gray-300 mb-2">Keine Sendungen gefunden</h3>
+                            <p class="text-gray-400 text-sm">Es konnten keine aktuellen Sendungen geladen werden.</p>
+                        </div>
+                    </div>
+                `
+                return
+            }
+            
+            container.innerHTML = channels.map(channel => `
+                <div class="channel-card rounded-xl p-5">
+                    <!-- Channel Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
+                                ${channel.no}
+                            </div>
+                            <h3 class="font-semibold text-gray-100">${channel.channel}</h3>
+                        </div>
+                        ${channel.now ? `
+                            <span class="live-indicator bg-red-500 text-white text-xs px-2 py-1 rounded-full flex items-center space-x-1">
+                                <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                                <span>LIVE</span>
+                            </span>
+                        ` : ''}
+                    </div>
+                    
+                    <!-- Current Show -->
+                    ${channel.now ? `
+                        <div class="current-show rounded-lg p-4 mb-4 text-white">
+                            <div class="text-sm font-medium mb-1">Jetzt:</div>
+                            <div class="font-semibold text-lg mb-2">${channel.now.title}</div>
+                            <div class="text-blue-100 text-sm">
+                                ${formatTime(channel.now.start)} - ${formatTime(channel.now.stop)}
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="bg-gray-700 rounded-lg p-4 mb-4">
+                            <div class="text-sm text-gray-400 mb-1">Jetzt:</div>
+                            <div class="text-gray-300 italic">Keine aktuelle Sendung</div>
+                        </div>
+                    `}
+                    
+                    <!-- Next Shows -->
+                    <div class="space-y-3">
+                        <div class="text-sm font-medium text-gray-400">Als nächstes:</div>
+                        ${channel.next && channel.next.length > 0 ? 
+                            channel.next.map(show => `
+                                <div class="flex justify-between items-start text-sm">
+                                    <span class="text-gray-200 flex-1 mr-2">${show.title}</span>
+                                    <span class="text-gray-400 text-xs whitespace-nowrap">
+                                        ${formatTime(show.start)}
+                                    </span>
+                                </div>
+                            `).join('') 
+                            : '<div class="text-gray-400 text-sm italic">Keine weiteren Sendungen</div>'
+                        }
+                    </div>
+                </div>
+            `).join('')
+        }
+        
+        function updateStats(data) {
+            const channels = data.items || []
+            const liveChannels = channels.filter(ch => ch.now).length
+            
+            document.getElementById('total-channels').textContent = channels.length
+            document.getElementById('live-channels').textContent = liveChannels
+            document.getElementById('last-update').textContent = formatTime(data.ts, true)
+            document.getElementById('timestamp').textContent = `Stand: ${formatTime(data.ts, true)}`
+        }
+        
+        function formatTime(isoString, short = false) {
+            const date = new Date(isoString)
+            if (short) {
+                return date.toLocaleTimeString('de-DE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                })
+            }
+            return date.toLocaleTimeString('de-DE', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            })
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').classList.remove('hidden')
+            document.getElementById('channels-container').classList.add('hidden')
+            document.getElementById('error').classList.add('hidden')
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').classList.add('hidden')
+            document.getElementById('channels-container').classList.remove('hidden')
+        }
+        
+        function showError(title, message) {
+            document.getElementById('error-title').textContent = title
+            document.getElementById('error-message').textContent = message
+            document.getElementById('error').classList.remove('hidden')
+            document.getElementById('loading').classList.add('hidden')
+            document.getElementById('channels-container').classList.add('hidden')
+        }
+        
+        function hideError() {
+            document.getElementById('error').classList.add('hidden')
+        }
+        
+        // Initial load
+        loadEPG()
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadEPG, 300000)
+    </script>
 </body>
 </html>
