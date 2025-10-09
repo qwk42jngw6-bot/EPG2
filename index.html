@@ -3,17 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EPG – Live Übersicht</title>
+<title>EPG – Jetzt</title>
 <style>
 :root{
   --bg:#0b0f14; --card:#111822; --border:#1f2733;
   --text:#e8edf3; --muted:#b1bdc9; --accent:#67e8f9;
-  --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
+  --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);
-  font-family:-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif;
-  font-size:14px;padding:12px}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;padding:12px}
 .grid{display:grid;gap:12px}
 @media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
@@ -26,27 +24,29 @@ body{background:var(--bg);color:var(--text);
 .summary{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.4}
 .badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .badge{font-size:12px;padding:3px 8px;border-radius:8px;border:1px solid var(--border)}
-.badge.gpt{color:var(--gpt)}
 .badge.imdb{color:var(--imdb)}
 .badge.rtU{color:var(--rtU)}
 .badge.rtC{color:var(--rtC)}
-.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--muted);
-  border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--muted);border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .warn{color:#facc15}
+.small{font-size:12px;color:var(--muted);margin-bottom:8px}
 </style>
 </head>
 <body>
-<main><div id="root" class="grid"></div></main>
+<main>
+  <div class="small">Tipp: Auf einen Titel klicken → kurze, spoilerfreie Inhaltsbeschreibung.</div>
+  <div id="root" class="grid"></div>
+</main>
 
 <script>
-// ========== HIER DEIN OPENAI-KEY EINTRAGEN ==========
-const OPENAI_KEY = "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";  // <— DEIN OpenAI API Key (mit "sk-")
-// ===================================================
+// ========== API-KEY UND WORKER-URL ==========
+const OPENAI_KEY = "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";
 const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
+// ============================================
+
 const t = d => new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-// GPT-Trailer (direkt aus dem Browser; du wolltest Key im Frontend)
 async function gptSummary(title){
   const q = `Schreibe eine kurze, spannende, spoilerfreie Inhaltsbeschreibung in 2–3 Sätzen (max. 55 Wörter) zu "${title}" auf Deutsch.`;
   try{
@@ -63,15 +63,12 @@ async function gptSummary(title){
         messages:[{role:"user",content:q}]
       })
     });
-    if(!r.ok){ const txt=await r.text().catch(()=>r.status); return `⚠️ OpenAI: ${r.status} ${txt.slice(0,120)}` }
+    if(!r.ok) return "⚠️ OpenAI-Fehler";
     const j = await r.json();
     return j.choices?.[0]?.message?.content?.trim() || "Keine Beschreibung gefunden.";
-  }catch(e){return "⚠️ Netzwerkfehler bei GPT";}
-}
-async function handleClick(sumEl,title){
-  sumEl.innerHTML=`<span class="spinner"></span>`;
-  const text = await gptSummary(title);
-  sumEl.textContent=text;
+  }catch(e){
+    return "⚠️ Netzwerkfehler";
+  }
 }
 
 function ratings(r){
@@ -83,11 +80,17 @@ function ratings(r){
   return chips.length? `<div class="badges">${chips.join("")}</div>` : "";
 }
 
+async function handleClick(sumEl,title){
+  sumEl.innerHTML=`<span class="spinner"></span>`;
+  const text = await gptSummary(title);
+  sumEl.textContent = text;
+}
+
 async function load(){
   const root=document.getElementById("root");
   root.textContent="Lade EPG …";
   try{
-    const r=await fetch(api,{cache:"no-store"});
+    const r=await fetch(API_BASE + "/api/now",{cache:"no-store"});
     const j=await r.json();
     root.innerHTML="";
     for(const it of j.items){
@@ -95,16 +98,28 @@ async function load(){
       c.innerHTML=`<div class="ch">${it.channel}</div>`;
       if(!it.now){ c.innerHTML+=`<div class="warn">Keine Daten</div>`; root.appendChild(c); continue; }
 
-      c.innerHTML +=
-        `<div class="now"><button class="ttl">${it.now.title}</button> <span class="time">(${t(it.now.start)}–${t(it.now.stop)})</span><div class="summary"></div></div>` +
-        (it.next?.length ? it.next.map(n =>
-          `<div class="next"><button class="ttl">${n.title}</button> <span class="time">(${t(n.start)}–${t(n.stop)})</span><div class="summary"></div></div>`
-        ).join("") : "") +
-        ratings(it.rating||null);
+      c.innerHTML += `<div class="now">
+          <button class="ttl">${it.now.title}</button>
+          <span class="time">(${t(it.now.start)}–${t(it.now.stop)})</span>
+          <div class="summary"></div>
+        </div>`;
+
+      if(it.next?.length){
+        c.innerHTML += it.next.map(n=>`
+          <div class="next">
+            <button class="ttl">${n.title}</button>
+            <span class="time">(${t(n.start)}–${t(n.stop)})</span>
+            <div class="summary"></div>
+          </div>
+        `).join("");
+      }
+
+      c.innerHTML += ratings(it.rating||null);
 
       const btns=c.querySelectorAll(".ttl");
       const sums=c.querySelectorAll(".summary");
       btns.forEach((b,i)=>b.addEventListener("click",()=>handleClick(sums[i],b.textContent)));
+
       root.appendChild(c);
     }
   }catch(e){
