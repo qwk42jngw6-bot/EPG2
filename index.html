@@ -3,154 +3,113 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EPG – Jetzt</title>
+<title>EPG – Live Übersicht</title>
 <style>
 :root{
-  --bg:#0b0f14; --card:#111822; --card2:#0f1621; --border:#1f2733;
-  --text:#e8edf3; --muted:#b1bdc9; --muted2:#8b98a6;
-  --accent:#67e8f9; --live:#86efac; --chip:#141b24;
+  --bg:#0b0f14; --card:#111822; --border:#1f2733;
+  --text:#e8edf3; --muted:#b1bdc9; --accent:#67e8f9;
   --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
 }
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--text);
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);
   font-family:-apple-system,Inter,Segoe UI,Roboto,Arial,sans-serif;
-  font-size:14px;-webkit-font-smoothing:antialiased}
-@media (max-width:420px){html,body{font-size:13px}}
-
-main{max-width:1120px;margin:0 auto;padding:14px}
+  font-size:14px;padding:12px}
 .grid{display:grid;gap:12px}
-@media(min-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:700px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
-
-.card{background:linear-gradient(180deg,var(--card),var(--card2));
-  border:1px solid var(--border); border-radius:14px; padding:14px 14px 12px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
-.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
-.ch{font-weight:900;letter-spacing:.2px}
-.no{font-size:11px;color:var(--muted2);background:var(--chip);border:1px solid var(--border);
-    padding:2px 8px;border-radius:999px}
-  x
-
-.now{font-weight:800;color:var(--live);line-height:1.35;margin-bottom:4px}
-.now button, .next button{
-  all:unset; cursor:pointer; border-bottom:1px dashed rgba(103,232,249,.35);
-}
-.now button:hover, .next button:hover{ color:var(--accent); border-bottom-color:var(--accent) }
-
-ul{margin:6px 0 2px 0;padding-left:18px}
-ul li{margin:.14rem 0;color:#d8e1ea}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.ch{font-weight:800;margin-bottom:6px;color:var(--accent)}
 .time{color:var(--accent)}
-
-.badges{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.55rem}
-.badge{font-size:.78rem;padding:.28rem .55rem;border-radius:.6rem;background:var(--chip);border:1px solid var(--border);line-height:1}
+.now,.next{margin:4px 0}
+.ttl{cursor:pointer;color:var(--text);border-bottom:1px dashed var(--accent)}
+.ttl:hover{color:var(--accent)}
+.summary{font-size:13px;color:var(--muted);margin-top:6px;line-height:1.4}
+.badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.badge{font-size:12px;padding:3px 8px;border-radius:8px;border:1px solid var(--border)}
 .badge.gpt{color:var(--gpt)}
 .badge.imdb{color:var(--imdb)}
 .badge.rtU{color:var(--rtU)}
 .badge.rtC{color:var(--rtC)}
-
-.small{font-size:12px;color:var(--muted2);margin-top:6px}
-.summary{margin-top:8px; font-size:13px; color:var(--muted); line-height:1.4}
-.spinner{display:inline-block; width:14px; height:14px; border:2px solid var(--muted2); border-top-color:var(--accent); border-radius:50%; animation:spin .9s linear infinite; vertical-align:-2px; margin-left:6px}
+.spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--muted);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .warn{color:#facc15}
 </style>
 </head>
 <body>
-<main>
-  <div id="root" class="grid"></div>
-</main>
+<main><div id="root" class="grid"></div></main>
 
 <script>
-const api="/api/now";
+// ========== HIER DEIN OPENAI-KEY EINTRAGEN ==========
+const OPENAI_KEY = "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";  // <— DEIN OpenAI API Key (mit "sk-")
+// ===================================================
+
+const api = "/api/now";
 const t = d => new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
-// Cache (7 Tage)
-const cacheGet=(k)=>{try{const x=JSON.parse(localStorage.getItem(k)||"null");if(!x)return null;if(Date.now()-x.ts>7*24*60*60*1000)return null;return x.val}catch{return null}};
-const cacheSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify({ts:Date.now(),val:v}))}catch{}};
-const keyFor=(title,original)=>"sum:v3:"+((original||title||"").toLowerCase());
-
-async function getTrailerSummary(title, original){
-  const ck = keyFor(title, original);
-  const c = cacheGet(ck); if(c!=null) return c;
+// GPT-Trailer (direkt aus dem Browser; du wolltest Key im Frontend)
+async function gptSummary(title){
+  const q = `Schreibe eine kurze, spannende, spoilerfreie Inhaltsbeschreibung in 2–3 Sätzen (max. 55 Wörter) zu "${title}" auf Deutsch.`;
   try{
-    const r = await fetch("/api/sum", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ title, original })
+    const r = await fetch("https://api.openai.com/v1/chat/completions",{
+      method:"POST",
+      headers:{
+        "Authorization":`Bearer ${OPENAI_KEY}`,
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({
+        model:"gpt-4o-mini",
+        temperature:0.7,
+        max_tokens:120,
+        messages:[{role:"user",content:q}]
+      })
     });
+    if(!r.ok){ const txt=await r.text().catch(()=>r.status); return `⚠️ OpenAI: ${r.status} ${txt.slice(0,120)}` }
     const j = await r.json();
-    const out = (j && j.summary) ? j.summary.trim() : "";
-    cacheSet(ck, out);
-    return out;
-  }catch{ return ""; }
+    return j.choices?.[0]?.message?.content?.trim() || "Keine Beschreibung gefunden.";
+  }catch(e){return "⚠️ Netzwerkfehler bei GPT";}
+}
+async function handleClick(sumEl,title){
+  sumEl.innerHTML=`<span class="spinner"></span>`;
+  const text = await gptSummary(title);
+  sumEl.textContent=text;
 }
 
 function ratings(r){
   if(!r) return "";
   const chips=[];
-  if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
-  if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
-  if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
-  if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
+  if(r.imdb)    chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
+  if(r.rtCritic)chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
+  if(r.rtUser)  chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
   return chips.length? `<div class="badges">${chips.join("")}</div>` : "";
 }
 
-function titleButtonHTML(txt){ return `<button type="button" class="ttl">${txt}</button>`; }
-
-async function handleClickSummary(container, title, original){
-  // Spinner zeigen
-  container.innerHTML = `<span class="spinner"></span>`;
-  const text = await getTrailerSummary(title, original);
-  container.textContent = text || "Keine Kurzbeschreibung gefunden.";
-}
-
-function nextList(arr, original){
-  if(!arr || !arr.length) return '<div class="small">Keine weiteren Sendungen.</div>';
-  return `<ul class="next">${arr.slice(0,2).map((p,i)=>(
-    `<li>${titleButtonHTML(p.title)} <span class="time">(${t(p.start)}–${t(p.stop)})</span><div class="summary" data-next="${i}"></div></li>`
-  )).join("")}</ul>`;
-}
-
 async function load(){
+  const root=document.getElementById("root");
+  root.textContent="Lade EPG …";
   try{
-    const r = await fetch(api,{cache:"no-store"});
-    const j = await r.json();
-    const root = document.getElementById("root");
-    root.innerHTML = "";
-
+    const r=await fetch(api,{cache:"no-store"});
+    const j=await r.json();
+    root.innerHTML="";
     for(const it of j.items){
-      const card = document.createElement("section"); card.className="card";
-      const head = `<div class="top"><div class="ch">${it.channel}</div><span class="no">#${it.no}</span></div>`;
-      if(!it.now){
-        card.innerHTML = head + `<div class="warn">Kein aktuelles Programm gefunden</div>`;
-        root.appendChild(card);
-        continue;
-      }
-      const when = it.now.start&&it.now.stop ? ` <span class="time">(${t(it.now.start)}–${t(it.now.stop)})</span>` : "";
+      const c=document.createElement("div"); c.className="card";
+      c.innerHTML=`<div class="ch">${it.channel}</div>`;
+      if(!it.now){ c.innerHTML+=`<div class="warn">Keine Daten</div>`; root.appendChild(c); continue; }
 
-      card.innerHTML = head
-        + `<div class="now">${titleButtonHTML(it.now.title)}${when}</div>`
-        + nextList(it.next, it.original)
-        + ratings(it.rating)
-        + (it.original ? `<div class="small">Original: ${it.original}</div>` : "")
-        + `<div class="summary" data-now="1"></div>`;
+      c.innerHTML +=
+        `<div class="now"><button class="ttl">${it.now.title}</button> <span class="time">(${t(it.now.start)}–${t(it.now.stop)})</span><div class="summary"></div></div>` +
+        (it.next?.length ? it.next.map(n =>
+          `<div class="next"><button class="ttl">${n.title}</button> <span class="time">(${t(n.start)}–${t(n.stop)})</span><div class="summary"></div></div>`
+        ).join("") : "") +
+        ratings(it.rating||null);
 
-      // Klick-Events: Jetzt
-      const nowBtn = card.querySelector(".now .ttl");
-      const nowSum = card.querySelector('.summary[data-now="1"]');
-      nowBtn.addEventListener("click", ()=> handleClickSummary(nowSum, it.now.title, it.original));
-
-      // Klick-Events: Nächste 2
-      const nextBtns = card.querySelectorAll(".next .ttl");
-      const nextSums = card.querySelectorAll('.next .summary');
-      nextBtns.forEach((btn, idx)=>{
-        btn.addEventListener("click", ()=> handleClickSummary(nextSums[idx], btn.textContent, it.original));
-      });
-
-      root.appendChild(card);
+      const btns=c.querySelectorAll(".ttl");
+      const sums=c.querySelectorAll(".summary");
+      btns.forEach((b,i)=>b.addEventListener("click",()=>handleClick(sums[i],b.textContent)));
+      root.appendChild(c);
     }
   }catch(e){
-    document.getElementById("root").innerHTML =
-      `<div class="warn">Fehler: ${(e && e.message) || e}</div>`;
+    root.textContent="Fehler: "+(e?.message||e);
   }
 }
 load();
