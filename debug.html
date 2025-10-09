@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EPG Debug Panel</title>
+<style>
+  :root { --bg:#0f1419; --card:#1a2330; --muted:#94a3b8; --text:#e5e7eb; --accent:#3b82f6; --ok:#10b981; --bad:#ef4444; }
+  * { box-sizing:border-box } body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;background:var(--bg);color:var(--text)}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px} h1{margin:0 0 12px;font-size:20px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px} button,input{font:inherit}
+  button{background:#253142;color:var(--text);border:1px solid #2c3a4f;border-radius:8px;padding:8px 12px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent)} input[type=text]{background:#0e1622;border:1px solid #2b394e;color:var(--text);padding:8px 10px;border-radius:8px;min-width:320px;flex:1}
+  .card{background:var(--card);border:1px solid #273246;border-radius:12px;padding:14px;margin-top:12px}
+  .muted{color:var(--muted)} .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .grid{display:grid;grid-template-columns:1fr;gap:10px} .flex{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;margin-left:6px;border:1px solid #2c3a4f;background:#0e1622}
+  .small{font-size:12px}.copybar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.hr{height:1px;background:#2b364a;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EPG Debug Panel</h1>
+
+  <div class="row">
+    <label class="muted">Worker:</label>
+    <input id="apiBase" type="text" value="https://waterfall-epg.w2gy9ymm7y.workers.dev" />
+    <button id="saveBase">Setzen</button>
+  </div>
+
+  <div class="row">
+    <button class="primary" data-action="now" data-set="single">/api/now?set=single</button>
+    <button class="primary" data-action="now" data-set="alt">/api/now?set=alt</button>
+    <button class="primary" data-action="now" data-set="all">/api/now?set=all</button>
+  </div>
+
+  <div class="row">
+    <button data-action="scan" data-set="single">/api/debug-scan?set=single</button>
+    <button data-action="scan" data-set="alt">/api/debug-scan?set=alt</button>
+    <button data-action="scan" data-set="all">/api/debug-scan?set=all</button>
+  </div>
+
+  <div class="row">
+    <input id="probeUrl" type="text" placeholder="Beliebige XMLTV-URL testen…" />
+    <button id="probeBtn">/api/probe</button>
+  </div>
+
+  <div id="out" class="grid"></div>
+</div>
+
+<script>
+  const apiBaseInput = document.getElementById('apiBase');
+  document.getElementById('saveBase').onclick = () => localStorage.setItem('EPG_API_BASE', apiBaseInput.value.trim());
+  apiBaseInput.value = localStorage.getItem('EPG_API_BASE') || apiBaseInput.value;
+
+  document.querySelectorAll('button[data-action]').forEach(btn=>{
+    btn.onclick = ()=> {
+      const base = (localStorage.getItem('EPG_API_BASE') || apiBaseInput.value).replace(/\/+$/,'');
+      const action = btn.dataset.action;
+      const set = btn.dataset.set;
+      const url = `${base}/api/${action==='now'?'now':'debug-scan'}?set=${encodeURIComponent(set)}`;
+      run(url, `${action.toUpperCase()} (${set})`);
+    };
+  });
+
+  document.getElementById('probeBtn').onclick = ()=>{
+    const base = (localStorage.getItem('EPG_API_BASE') || apiBaseInput.value).replace(/\/+$/,'');
+    const u = document.getElementById('probeUrl').value.trim();
+    if(!u) return alert('Bitte URL eingeben');
+    run(`${base}/api/probe?url=${encodeURIComponent(u)}`, `PROBE (${u})`);
+  };
+
+  const out = document.getElementById('out');
+
+  async function run(url, title){
+    const card = mkCard(title, url);
+    out.prepend(card.el);
+    try{
+      const t0 = performance.now();
+      const res = await fetch(url);
+      const t1 = performance.now();
+      const ct = res.headers.get('content-type')||'';
+      let body; try{ body = ct.includes('json') ? await res.json() : await res.text(); }catch(e){ body = { parseError:String(e) }; }
+      card.setMeta(`Status: ${res.status} · Dauer: ${Math.round(t1-t0)}ms · CT: ${ct}`);
+      card.setBody(body);
+    }catch(e){
+      card.setMeta('NETWORK ERROR');
+      card.setBody({ error:String(e) });
+    }
+  }
+
+  function mkCard(title,url){
+    const el = document.createElement('div');
+    el.className='card';
+    el.innerHTML = `
+      <div class="flex">
+        <div><strong>${esc(title)}</strong><span class="badge small">${esc(url)}</span></div>
+        <div class="copybar">
+          <button class="small" data-cmd="copy">Kopieren</button>
+          <button class="small" data-cmd="dl">Download</button>
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="muted small" data-meta>…</div>
+      <div class="hr"></div>
+      <pre class="mono small" data-pre></pre>`;
+    const pre = el.querySelector('[data-pre]');
+    const meta = el.querySelector('[data-meta]');
+    el.querySelector('[data-cmd="copy"]').onclick = ()=> navigator.clipboard.writeText(pre.textContent);
+    el.querySelector('[data-cmd="dl"]').onclick = ()=>{
+      const blob = new Blob([pre.textContent],{type:'application/json'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='epg-debug.json'; a.click(); URL.revokeObjectURL(a.href);
+    };
+    return { el, setMeta:(t)=>meta.textContent=t, setBody:(b)=>pre.textContent=typeof b==='string'?b:JSON.stringify(b,null,2) };
+  }
+  function esc(s){return String(s).replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))}
+</script>
+</body>
+</html>
