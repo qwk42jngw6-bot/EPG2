@@ -1,107 +1,87 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>EPG-2</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TV Programm</title>
 <style>
-  body{background:#0f1419;color:#e5e7eb;font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;padding:16px}
+  :root { --bg:#0f1419; --card:#1a1f26; --border:#2a2f35; --muted:#9ca3af; --accent:#60a5fa; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,sans-serif;line-height:1.35;padding:16px}
   .container{max-width:1400px;margin:0 auto}
-  .header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-  .ts{color:#9ca3af;font-size:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .card{background:#1a1f26;border:1px solid #2a2f35;border-radius:8px;padding:12px}
-  .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-  .ch{font-weight:600;font-size:14px}
-  .no{color:#60a5fa;font-size:12px}
-  .title{font-size:13px;margin-bottom:2px}
-  .time{color:#9ca3af;font-size:11px}
-  .noshow{color:#6b7280;font-size:12px;font-style:italic}
-  .next{border-top:1px solid #2a2f35;margin-top:6px;padding-top:6px;color:#9ca3af;font-size:11px}
-  .err{background:#7f1d1d;color:#fecaca;border:1px solid #ef4444;border-radius:8px;padding:10px;margin:8px 0}
-  .badge{background:#374151;color:#cbd5e1;font-size:10px;border-radius:6px;padding:2px 6px;margin-left:8px}
-  .src{color:#a7f3d0;font-size:12px;margin-left:8px}
-  a.small{color:#93c5fd;text-decoration:none}
+  .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .ts{color:#94a3b8;font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px}
+  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:6px}
+  .name{font-weight:700;font-size:14px}
+  .no{font-size:12px;background:#1e3a8a;color:var(--accent);padding:2px 6px;border-radius:6px}
+  .title{font-size:13px;margin-bottom:3px}
+  .time{font-size:11px;color:var(--muted)}
+  .none{font-size:12px;color:#6b7280;font-style:italic}
+  .next{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
+  .nx{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
+  .err{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:10px}
+  button{background:#111827;border:1px solid var(--border);color:#e5e7eb;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
+  button:hover{border-color:#3b82f6}
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="header">
-    <div>
-      <strong>EPG-2</strong>
-      <span id="src" class="src"></span>
-    </div>
-    <div class="ts" id="ts">lädt…</div>
-  </div>
-
   <div id="err"></div>
-  <div id="content"><div class="err">Lade Programm…</div></div>
-
-  <div style="margin-top:10px;font-size:12px;color:#9ca3af">
-    Debug: <a class="small" id="dbgLink" target="_blank" rel="noopener">/debug</a>
+  <div class="toolbar">
+    <div class="ts" id="ts">lädt…</div>
+    <div style="display:flex;gap:8px">
+      <button id="refresh">Aktualisieren</button>
+    </div>
   </div>
+  <div id="root"><div class="card"><div class="title">Lade Sender…</div></div></div>
 </div>
 
 <script>
-const API = 'https://waterfall-epg.w2gy9ymm7y.workers.dev';
-const params = new URLSearchParams(location.search);
-const useParam = params.get('use'); // optional Liste durchreichen
-document.getElementById('dbgLink').href = API + '/debug' + (useParam ? ('?use=' + encodeURIComponent(useParam)) : '');
+const API_BASE = 'https://waterfall-epg.w2gy9ymm7y.workers.dev';
 
-async function load(){
+function fmt(t){const d=new Date(t);return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}
+function setErr(msg){document.getElementById('err').innerHTML = msg?(`<div class="err">${msg}</div>`):'';}
+
+async function loadNow(){
+  setErr('');
+  document.getElementById('root').innerHTML = '<div class="card"><div class="title">Lade…</div></div>';
   try{
-    const url = API + '/api/now' + (useParam ? ('?use=' + encodeURIComponent(useParam)) : '');
-    const r = await fetch(url);
-    const j = await r.json();
-    render(j);
+    const r = await fetch(`${API_BASE}/api/now`);
+    const data = await r.json();
+    render(data);
   }catch(e){
-    showErr('Verbindungsfehler: ' + e.message);
+    setErr('Fehler beim Laden: '+e.message);
   }
 }
-function fmt(t){ return new Date(t).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
-function showErr(msg){ document.getElementById('err').innerHTML = '<div class="err">'+msg+'</div>'; }
-function clearErr(){ document.getElementById('err').innerHTML = ''; }
 
-function render(j){
-  document.getElementById('ts').textContent = 'Stand: ' + (j.ts ? fmt(j.ts) : '–');
-  const srcSpan = document.getElementById('src');
-  srcSpan.textContent = j.debug && j.debug.sourceUsed ? 'Quelle: ' + j.debug.sourceUsed : '';
-
-  if (j.error){
-    let attempts = '';
-    if (Array.isArray(j.attempts) && j.attempts.length){
-      attempts = '<ul style="margin:6px 0 0 16px">';
-      j.attempts.forEach(a=>{
-        attempts += '<li><code>'+ (a.url||'') +'</code> — '+ (a.reason||'') +'</li>';
-      });
-      attempts += '</ul>';
-    }
-    showErr('API: ' + j.error + attempts);
-  } else {
-    clearErr();
-  }
-
-  const items = Array.isArray(j.items) ? j.items : [];
-  let html = '';
-  items.forEach(ch=>{
-    html += '<div class="card">';
-    html +=   '<div class="row"><div class="ch">'+ch.channel+'</div><div class="no">#'+ch.no+'</div></div>';
-    if (ch.now){
-      html += '<div class="title">'+ch.now.title+'</div>';
-      html += '<div class="time">'+fmt(ch.now.start)+' – '+fmt(ch.now.stop)+'</div>';
-    } else {
-      html += '<div class="noshow">Keine aktuelle Sendung</div>';
-    }
-    if (Array.isArray(ch.next) && ch.next.length){
-      html += '<div class="next">Danach: '+ch.next[0].title+' ('+fmt(ch.next[0].start)+')</div>';
-    }
-    html += '</div>';
-  });
-  document.getElementById('content').innerHTML = '<div class="grid">'+html+'</div>';
+function render(data){
+  const items = (data && data.items)||[];
+  document.getElementById('ts').textContent = data?.ts ? ('Stand: '+ new Date(data.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})) : '';
+  if(!items.length){ document.getElementById('root').innerHTML='<div class="card"><div class="title">Keine Daten</div></div>'; return; }
+  const cards = items.map(ch=>{
+    const now = ch.now ? `
+      <div class="title">${ch.now.title}</div>
+      <div class="time">${fmt(ch.now.start)} – ${fmt(ch.now.stop)}</div>
+    ` : `<div class="none">Keine aktuelle Sendung</div>`;
+    const next = (ch.next && ch.next.length) ? `
+      <div class="next">
+        ${ch.next.slice(0,2).map(n=>`<div class="nx"><span>${n.title}</span><span>${fmt(n.start)}</span></div>`).join('')}
+      </div>` : '';
+    return `
+      <div class="card">
+        <div class="hdr"><div class="name">${ch.channel}</div><div class="no">#${ch.no}</div></div>
+        ${now}
+        ${next}
+      </div>`;
+  }).join('');
+  document.getElementById('root').innerHTML = `<div class="grid">${cards}</div>`;
 }
 
-load();
-setInterval(load, 300000);
+document.getElementById('refresh').addEventListener('click', loadNow);
+loadNow();
+setInterval(loadNow, 300000);
 </script>
 </body>
 </html>
