@@ -1,249 +1,277 @@
-<!-- index.html — EPG-UI mit Quellumschalter, Debug, Scan & Autorefresh -->
-
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TV Programm – EPG</title>
-<style>
-  :root {
-    --bg:#0f1419; --card:#1a1f26; --border:#2a2f35; --muted:#94a3b8;
-    --text:#e5e7eb; --primary:#3b82f6; --danger:#ef4444; --ok:#10b981;
-  }
-  *{box-sizing:border-box}
-  body{margin:0; background:var(--bg); color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif; line-height:1.4}
-  .container{max-width:1200px; margin:0 auto; padding:16px;}
-  .header{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px}
-  .hgroup{display:flex; flex-direction:column; gap:4px}
-  h1{margin:0; font-size:20px}
-  .muted{color:var(--muted); font-size:13px}
-
-  .controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
-  select,button,input[type=checkbox]{background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px; font-size:14px}
-  button{cursor:pointer}
-  button.primary{background:var(--primary); border-color:transparent}
-  button.ghost{background:transparent}
-  .tag{display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted)}
-  .badge{font-size:10px; padding:2px 6px; border-radius:6px; background:#2b3440; color:#9ca3af}
-  .badge.ok{background:#103a2f; color:#a7f3d0}
-  .badge.err{background:#3a1010; color:#fecaca}
-
-  .grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(280px,1fr)); gap:10px}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; position:relative}
-  .row{display:flex; align-items:center; justify-content:space-between; gap:8px}
-  .title{font-weight:600}
-  .sub{color:var(--muted); font-size:12px}
-  .live{position:absolute; top:10px; right:10px; background:var(--danger); color:white; font-size:10px; font-weight:700; padding:3px 7px; border-radius:999px}
-  .section{margin-top:16px}
-  .table{width:100%; border-collapse:collapse; font-size:13px}
-  .table th,.table td{border-bottom:1px solid var(--border); padding:8px; text-align:left; color:var(--text)}
-  .table th{color:#cbd5e1}
-  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px}
-  .error{background:#3a1010; color:#fecaca; border:1px solid #7f1d1d; padding:12px; border-radius:8px; margin:10px 0}
-  .success{background:#102f1f; color:#a7f3d0; border:1px solid #14532d; padding:12px; border-radius:8px; margin:10px 0}
-  .small{font-size:12px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TV Programm – EPG</title>
+  <style>
+    :root{
+      --bg:#0f1419;--card:#1a1f26;--card2:#1e293b;--muted:#94a3b8;--line:#2a2f35;
+      --accent:#3b82f6;--ok:#10b981;--bad:#ef4444;--warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;padding:16px;background:var(--bg);color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,'Helvetica Neue',Arial}
+    .container{max-width:1400px;margin:0 auto}
+    header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+    h1{margin:0;font-size:20px}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    select,button{
+      background:var(--card);color:#e5e7eb;border:1px solid var(--line);border-radius:8px;
+      padding:8px 10px;font-size:14px;cursor:pointer
+    }
+    button.primary{background:var(--accent);border-color:transparent}
+    button.ghost{background:transparent}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .stamp{color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+    .card{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .badge{font-size:11px;padding:2px 8px;border-radius:999px;background:#334155;color:#cbd5e1}
+    .badge.live{background:#dc2626;color:#fff}
+    .ch-no{background:#1e3a8a;color:#93c5fd;border-radius:6px;padding:2px 8px;font-weight:600}
+    .title{font-weight:600}
+    .muted{color:var(--muted);font-size:12px}
+    .err{background:#7f1d1d;border:1px solid #b91c1c;color:#fecaca;padding:12px;border-radius:10px;margin:12px 0}
+    .panel{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{font-size:12px;padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+    th{color:#cbd5e1}
+    .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
+    code,pre{background:#0b1015;border:1px solid #141a20;color:#cbd5e1;border-radius:8px;padding:8px;display:block;overflow:auto}
+    .small{font-size:12px}
+    @media (max-width:720px){.grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="hgroup">
-        <h1>TV Programm</h1>
-        <div id="timestamp" class="muted">Bereit</div>
-      </div>
-      <div class="controls">
-        <span class="tag">Set:
-          <select id="set">
-            <option value="single">single (kleine Feeds)</option>
-            <option value="alt">alt (Alternativ)</option>
-          </select>
-        </span>
-        <span class="tag">Quelle:
-          <select id="source"></select>
-        </span>
-        <label class="tag">
-          <input type="checkbox" id="useFallback" checked/> Fallback wenn leer
-        </label>
-        <button id="btnLoad" class="primary">Jetzt laden</button>
-        <button id="btnLoadOne">Nur diese Quelle</button>
-        <button id="btnScan" class="ghost">Alle prüfen</button>
-        <label class="tag">
-          <input type="checkbox" id="auto" /> Auto-Refresh 5 min
-        </label>
-      </div>
+<div class="container">
+  <header>
+    <div>
+      <h1>TV Programm – EPG</h1>
+      <div class="stamp" id="stamp">–</div>
     </div>
-
-    <div id="alerts"></div>
-
-    <div id="stats" class="section"></div>
-    <div id="grid" class="grid"></div>
-
-    <div class="section">
-      <h3>Letzte Versuche</h3>
-      <table class="table mono" id="attemptsTbl">
-        <thead><tr><th>#</th><th>URL</th><th>Status</th><th>CT</th><th>CE</th><th>Bytes</th><th>ms</th></tr></thead>
-        <tbody></tbody>
-      </table>
+    <div class="controls">
+      <label class="small">Quelle:</label>
+      <select id="sourceSet">
+        <option value="auto">Auto</option>
+        <option value="single">Single (kleine Feeds)</option>
+        <option value="alt">Alt</option>
+        <option value="all">All</option>
+        <option value="fallback">Fallback (Testdaten)</option>
+      </select>
+      <button id="btnReload" class="primary">Aktualisieren</button>
+      <button id="btnToggleAuto" class="ghost" title="Auto-Refresh alle 5 Min.">Auto-Refresh: Aus</button>
+      <button id="btnCheckAll">Alle Quellen prüfen</button>
+      <a id="btnOpenDebug" class="ghost" href="debug.html" target="_blank" rel="noopener">Debug-Seite öffnen</a>
     </div>
+  </header>
 
-    <div class="section">
-      <h3>Scan (Alle prüfen)</h3>
-      <table class="table mono" id="scanTbl">
-        <thead><tr><th>#</th><th>URL</th><th>Status</th><th>CT</th><th>Bytes</th><th>ms</th><th>Snippet</th></tr></thead>
-        <tbody></tbody>
-      </table>
+  <div id="errorBox" class="err" style="display:none;"></div>
+
+  <section id="cards" class="grid"></section>
+
+  <section class="panel">
+    <div class="row">
+      <div class="title">Debug (letzte Antwort)</div>
+      <div class="badge" id="dbgSource">–</div>
     </div>
-  </div>
+    <div class="small muted" id="dbgInfo">–</div>
+    <details style="margin-top:8px">
+      <summary>Versuche / Fehlermeldungen</summary>
+      <div id="attemptsWrap" class="small" style="margin-top:8px">–</div>
+    </details>
+    <details style="margin-top:8px">
+      <summary>cURL für diese Auswahl</summary>
+      <pre id="curlBox">curl -s "…" | jq</pre>
+    </details>
+  </section>
+
+  <section class="panel" style="margin-top:14px">
+    <div class="row"><div class="title">Quellen-Scan</div></div>
+    <div id="scanArea" class="small muted">Noch kein Scan durchgeführt. Klicke „Alle Quellen prüfen“.</div>
+    <div style="margin-top:10px"><table id="scanTable" style="display:none">
+      <thead><tr>
+        <th>#</th><th>URL</th><th>Status</th><th>Content-Type</th><th>Bytes</th><th>Snippet</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+</div>
 
 <script>
-const API_BASE = 'https://DEINNAME.workers.dev'; // HIER deine Worker-URL eintragen!
+  // === Einstellungen ===
+  const WORKER_BASE = 'https://waterfall-epg.w2gy9ymm7y.workers.dev'; // <-- anpassen, falls nötig
+  const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
-const el = (id) => document.getElementById(id);
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  const el = (id)=>document.getElementById(id);
+  const cards = el('cards');
+  const errBox = el('errorBox');
+  const stamp = el('stamp');
+  const dbgSource = el('dbgSource');
+  const dbgInfo = el('dbgInfo');
+  const attemptsWrap = el('attemptsWrap');
+  const curlBox = el('curlBox');
+  const scanArea = el('scanArea');
+  const scanTable = el('scanTable');
+  const scanBody = scanTable.querySelector('tbody');
 
-async function api(path) {
-  const r = await fetch(API_BASE + path);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
-}
+  let autoTimer = null;
 
-async function populateSources() {
-  const set = el('set').value;
-  const data = await api(`/api/sources?set=${encodeURIComponent(set)}`);
-  const s = el('source');
-  s.innerHTML = '';
-  (data.sources || []).forEach(u => {
-    const opt = document.createElement('option');
-    opt.value = u; opt.textContent = u;
-    s.appendChild(opt);
-  });
-  if (!s.value && s.options.length) s.selectedIndex = 0;
-}
-
-function showAlert(html, ok=false) {
-  el('alerts').innerHTML = `<div class="${ok?'success':'error'}">${html}</div>`;
-  setTimeout(()=>{ el('alerts').innerHTML=''; }, 5000);
-}
-
-function updateAttempts(tblId, list=[]) {
-  const tb = el(tblId).querySelector('tbody');
-  tb.innerHTML = '';
-  list.forEach((a,i)=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${i+1}</td>
-      <td class="mono small" style="word-break:break-all">${a.src || a.url}</td>
-      <td>${badge(a.ok? 'ok':'err', (a.status||0))}</td>
-      <td class="small">${a.ct||''}</td>
-      <td class="small">${a.ce||''}</td>
-      <td>${a.len||''}</td>
-      <td>${a.ms||''}</td>
-    `;
-    tb.appendChild(tr);
-  });
-}
-
-function badge(type, txt){ return `<span class="badge ${type==='ok'?'ok':'err'}">${txt}</span>`; }
-
-function renderGrid(items=[]) {
-  const g = el('grid');
-  g.innerHTML = '';
-  items.forEach(ch=>{
-    const has = ch.now && ch.now.title;
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      ${has?'<div class="live">LIVE</div>':''}
-      <div class="row">
-        <div class="title">${ch.channel}</div>
-        <div class="badge">${'#'+ch.no}</div>
-      </div>
-      <div class="section">
-        ${has? `
-          <div><strong>${ch.now.title}</strong></div>
-          <div class="sub">${fmtTime(ch.now.start)} – ${fmtTime(ch.now.stop)}</div>
-        `: `<div class="sub">Keine aktuelle Sendung</div>`}
-      </div>
-      ${Array.isArray(ch.next) && ch.next.length? `
-        <div class="section">
-          ${ch.next.map(n=>`<div class="sub">Danach: <span class="title">${n.title}</span> · ${fmtTime(n.start)}</div>`).join('')}
-        </div>`:``}
-    `;
-    g.appendChild(card);
-  });
-}
-
-function renderStats(items=[], srcUsed) {
-  const total = items.length;
-  const live = items.filter(x=>x.now).length;
-  el('stats').innerHTML = `
-    <div class="row">
-      <div>Quelle: <span class="badge">${srcUsed || '—'}</span></div>
-      <div class="row" style="gap:8px">
-        <span class="badge">Kanäle: ${total}</span>
-        <span class="badge ok">Live: ${live}</span>
-      </div>
-    </div>
-  `;
-}
-
-async function loadNow({ onlyThis=false } = {}) {
-  const set = el('set').value;
-  const src = el('source').value;
-  const fallback = el('useFallback').checked ? '1':'0';
-  let path = `/api/now?set=${encodeURIComponent(set)}&fallback=${fallback}`;
-  if (onlyThis && src) path += `&source=${encodeURIComponent(src)}`;
-
-  el('timestamp').textContent = 'Lade...';
-  try {
-    const data = await api(path);
-    if (data.error) showAlert(`EPG-Fehler: ${data.error}`);
-    renderGrid(data.items || []);
-    renderStats(data.items || [], data.sourceUsed);
-    updateAttempts('attemptsTbl', data.attempts || []);
-    el('timestamp').textContent = `Aktualisiert: ${new Date().toLocaleString('de-DE')}`;
-  } catch(e) {
-    showAlert('Netzwerkfehler beim Laden.');
-    el('timestamp').textContent = 'Fehler';
+  function setError(msg){
+    if(!msg){ errBox.style.display='none'; errBox.textContent=''; return; }
+    errBox.style.display='block';
+    errBox.textContent = msg;
   }
-}
 
-async function doScan() {
-  const set = el('set').value;
-  el('timestamp').textContent = 'Scan läuft...';
-  try {
-    const data = await api(`/api/debug-scan?set=${encodeURIComponent(set)}`);
-    updateAttempts('scanTbl', data.results || []);
-    el('timestamp').textContent = `Scan fertig: ${new Date().toLocaleString('de-DE')}`;
-  } catch(e) {
-    showAlert('Scan fehlgeschlagen.');
-    el('timestamp').textContent = 'Fehler';
+  function fmtTime(iso){
+    try{
+      return new Date(iso).toLocaleString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }catch{ return iso || '—'; }
   }
-}
 
-let autoTimer = null;
-function toggleAuto() {
-  const on = el('auto').checked;
-  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
-  if (on) {
-    autoTimer = setInterval(()=>loadNow({onlyThis:false}), 5*60*1000);
+  function renderItems(data){
+    const items = Array.isArray(data.items)?data.items:[];
+    cards.innerHTML = items.map(ch=>{
+      const now = ch.now;
+      const live = now && now.title;
+      const next = (ch.next||[]).slice(0,2);
+      return `
+        <div class="card">
+          ${live?`<span class="badge live" style="position:absolute;right:12px;top:12px">LIVE</span>`:''}
+          <div class="row">
+            <div class="title">${ch.channel||'—'}</div>
+            <div class="ch-no">#${ch.no||'–'}</div>
+          </div>
+          <div class="small">${ live
+              ? `<div><strong>${now.title}</strong></div>
+                 <div class="muted">${fmtTime(now.start)} – ${fmtTime(now.stop)}</div>`
+              : `<div class="muted">Keine aktuelle Sendung</div>`}
+          </div>
+          ${next.length?`
+            <div class="small" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
+              ${next.map(n=>`
+                <div class="row" style="gap:12px">
+                  <div class="muted">${fmtTime(n.start)}</div>
+                  <div style="flex:1">${n.title||'—'}</div>
+                </div>`).join('')}
+            </div>`:''}
+        </div>`;
+    }).join('');
   }
-}
 
-// Init
-(async function init(){
-  await populateSources();
-  await loadNow({ onlyThis:false });
+  function renderDebug(data, setName){
+    stamp.textContent = data.ts ? `Stand: ${fmtTime(data.ts)}` : '–';
+    const src = data.sourceUsed || (data.debug && data.debug.sourceUsed) || '–';
+    dbgSource.textContent = src;
+    const okCount = (data.items||[]).filter(x=>x.now && x.now.title).length;
+    const total = (data.items||[]).length;
+    dbgInfo.textContent = `Set: ${setName} • Treffer (mit „now“): ${okCount}/${total}`;
 
-  el('set').addEventListener('change', async ()=>{
-    await populateSources();
+    const attempts = data.attempts || data.debug || data.sources || [];
+    if(Array.isArray(attempts) && attempts.length){
+      attemptsWrap.innerHTML = `<table><thead><tr>
+        <th>#</th><th>URL</th><th>Ergebnis</th></tr></thead><tbody>${
+          attempts.map((a,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td style="word-break:break-all">${a.url || a.src || '–'}</td>
+              <td>${a.error || a.status || JSON.stringify(a).slice(0,120)}</td>
+            </tr>`).join('')
+        }</tbody></table>`;
+    }else{
+      attemptsWrap.textContent = 'Keine Versuchs-Infos verfügbar.';
+    }
+  }
+
+  function renderCurl(setName){
+    const nowUrl = `${WORKER_BASE}/api/now?set=${encodeURIComponent(setName)}`;
+    const scanUrl = `${WORKER_BASE}/api/debug-scan?set=${encodeURIComponent(setName)}`;
+    curlBox.textContent =
+`# API „Now“:
+curl -s "${nowUrl}" | jq
+
+# Quellen-Scan:
+curl -s "${scanUrl}" | jq`;
+  }
+
+  async function fetchJSON(url){
+    const r = await fetch(url, {cache:'no-store'});
+    // bei Fehlern trotzdem versuchen, Text zu lesen
+    let text = '';
+    try{ text = await r.text(); }catch{}
+    let json;
+    try{ json = JSON.parse(text); }catch{ json = { error:`HTTP ${r.status}`, raw:text } }
+    return { ok:r.ok, status:r.status, data:json };
+  }
+
+  async function loadNow(){
+    setError('');
+    const setName = document.getElementById('sourceSet').value;
+    const url = `${WORKER_BASE}/api/now?set=${encodeURIComponent(setName)}`;
+    document.getElementById('btnReload').disabled = true;
+    const { ok, status, data } = await fetchJSON(url);
+    document.getElementById('btnReload').disabled = false;
+
+    renderCurl(setName);
+
+    if(!ok || data.error){
+      renderItems({items:[]});
+      renderDebug(data||{}, setName);
+      setError(`Fehler (${status}): ${data.error || 'Unbekannter Fehler'}`);
+      return;
+    }
+    renderItems(data);
+    renderDebug(data, setName);
+  }
+
+  async function runScan(){
+    const setName = document.getElementById('sourceSet').value;
+    const url = `${WORKER_BASE}/api/debug-scan?set=${encodeURIComponent(setName)}`;
+    scanArea.textContent = 'Scanne Quellen…';
+    scanTable.style.display = 'none';
+    scanBody.innerHTML = '';
+    const { data } = await fetchJSON(url);
+
+    if(data.error){
+      scanArea.innerHTML = `<div class="err">Scan-Fehler: ${data.error}</div>`;
+      return;
+    }
+    const list = data.results || data.sources || [];
+    if(!list.length){
+      scanArea.textContent = 'Keine Ergebnisse.';
+      return;
+    }
+    scanArea.textContent = `Zeit: ${fmtTime(data.ts || new Date().toISOString())} • ${list.length} Quellen geprüft`;
+    scanBody.innerHTML = list.map((r,i)=>`
+      <tr>
+        <td>${i+1}</td>
+        <td style="word-break:break-all">${r.url||'–'}</td>
+        <td class="${(+r.status>=200 && +r.status<300)?'ok':(+r.status>=500?'bad':'warn')}">${r.status||'–'}</td>
+        <td>${r.ct||'–'}</td>
+        <td>${r.len||'–'}</td>
+        <td style="word-break:break-all">${(r.bodySample||'').slice(0,120)}</td>
+      </tr>`).join('');
+    scanTable.style.display = '';
+  }
+
+  // === Events ===
+  document.getElementById('btnReload').addEventListener('click', loadNow);
+  document.getElementById('sourceSet').addEventListener('change', ()=>{ renderCurl(sourceSet.value); loadNow(); });
+  document.getElementById('btnCheckAll').addEventListener('click', runScan);
+  document.getElementById('btnToggleAuto').addEventListener('click', (e)=>{
+    if(autoTimer){
+      clearInterval(autoTimer); autoTimer=null;
+      e.target.textContent='Auto-Refresh: Aus';
+      e.target.classList.add('ghost');
+    }else{
+      autoTimer = setInterval(loadNow, AUTO_REFRESH_MS);
+      e.target.textContent='Auto-Refresh: An';
+      e.target.classList.remove('ghost');
+    }
   });
-  el('btnLoad').addEventListener('click', ()=>loadNow({onlyThis:false}));
-  el('btnLoadOne').addEventListener('click', ()=>loadNow({onlyThis:true}));
-  el('btnScan').addEventListener('click', doScan);
-  el('auto').addEventListener('change', toggleAuto);
-})();
+
+  // Initial
+  renderCurl('auto');
+  loadNow();
 </script>
 </body>
 </html>
