@@ -1,87 +1,223 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>TV Programm</title>
 <style>
-  :root { --bg:#0f1419; --card:#1a1f26; --border:#2a2f35; --muted:#9ca3af; --accent:#60a5fa; }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,sans-serif;line-height:1.35;padding:16px}
+  body{background:#0f1419;color:#e2e8f0;font-family:system-ui,sans-serif;margin:0;padding:16px}
   .container{max-width:1400px;margin:0 auto}
-  .toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
-  .ts{color:#94a3b8;font-size:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px}
-  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:6px}
-  .name{font-weight:700;font-size:14px}
-  .no{font-size:12px;background:#1e3a8a;color:var(--accent);padding:2px 6px;border-radius:6px}
-  .title{font-size:13px;margin-bottom:3px}
-  .time{font-size:11px;color:var(--muted)}
-  .none{font-size:12px;color:#6b7280;font-style:italic}
-  .next{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
-  .nx{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px}
-  .err{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626;border-radius:8px;padding:10px;margin-bottom:10px}
-  button{background:#111827;border:1px solid var(--border);color:#e5e7eb;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer}
-  button:hover{border-color:#3b82f6}
+  .header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap}
+  .tab{padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#1e293b;cursor:pointer;font-size:13px}
+  .tab.active{outline:2px solid #3b82f6}
+  .btn{padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0b2a4a;cursor:pointer;font-size:13px}
+  .badge{font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid #334155}
+  .ok{background:#052e1b;border-color:#14532d;color:#34d399}
+  .bad{background:#3b0a0a;border-color:#7f1d1d;color:#fca5a5}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;position:relative}
+  .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .title{font-weight:600}
+  .no{background:#1e40af;color:#93c5fd;font-size:12px;padding:2px 8px;border-radius:8px}
+  .live{position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px}
+  .sub{font-size:12px;color:#94a3b8}
+  .debug{margin-top:16px;background:#0b1220;border:1px solid #1f2937;border-radius:12px}
+  .debug h3{margin:0;padding:10px 12px;border-bottom:1px solid #1f2937}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{border-top:1px solid #1f2937;padding:8px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <div class="container">
-  <div id="err"></div>
-  <div class="toolbar">
-    <div class="ts" id="ts">lädt…</div>
-    <div style="display:flex;gap:8px">
-      <button id="refresh">Aktualisieren</button>
+  <div class="header">
+    <div class="tabs" id="tabs"></div>
+    <button class="btn" id="probe">Alle prüfen</button>
+    <span id="sourceBadge" class="badge">Quelle: –</span>
+    <span id="ts" class="badge">Stand: –</span>
+  </div>
+
+  <div class="row">
+    <span id="summary" class="badge"></span>
+    <span id="cacheBadge" class="badge"></span>
+  </div>
+
+  <div id="content" class="grid"></div>
+
+  <div class="debug">
+    <h3>Debug / Versuche</h3>
+    <div style="padding:8px 12px">
+      <table id="attemptsTbl">
+        <thead>
+          <tr><th>#</th><th>Sender/URL</th><th>Status</th><th>ms</th><th>Hinweis</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
-  <div id="root"><div class="card"><div class="title">Lade Sender…</div></div></div>
+
 </div>
 
 <script>
-const API_BASE = 'https://waterfall-epg.w2gy9ymm7y.workers.dev';
+const API_BASE = location.origin; // passe an, falls anders gehostet
+let SOURCES = [];
+let current = null;
 
-function fmt(t){const d=new Date(t);return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}
-function setErr(msg){document.getElementById('err').innerHTML = msg?(`<div class="err">${msg}</div>`):'';}
+init();
 
-async function loadNow(){
-  setErr('');
-  document.getElementById('root').innerHTML = '<div class="card"><div class="title">Lade…</div></div>';
-  try{
-    const r = await fetch(`${API_BASE}/api/now`);
-    const data = await r.json();
-    render(data);
-  }catch(e){
-    setErr('Fehler beim Laden: '+e.message);
+async function init(){
+  await loadSources();
+  renderTabs();
+  // Lade initial erste Quelle
+  if (SOURCES[0]) {
+    current = SOURCES[0].id;
+    selectTab(current);
+    await loadNow(current);
+  }
+  document.getElementById('probe').onclick = probeAll;
+}
+
+async function loadSources(){
+  const r = await fetch(`${API_BASE}/api/sources`);
+  const d = await r.json();
+  SOURCES = d.sources;
+}
+
+function renderTabs(){
+  const el = document.getElementById('tabs');
+  el.innerHTML = "";
+  SOURCES.forEach(s=>{
+    const b = document.createElement('button');
+    b.className = 'tab';
+    b.textContent = s.label;
+    b.onclick = async ()=>{
+      current = s.id;
+      selectTab(current);
+      await loadNow(current);
+    };
+    b.dataset.id = s.id;
+    el.appendChild(b);
+  });
+}
+function selectTab(id){
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.id===id);
+  });
+}
+
+async function loadNow(sourceId){
+  setBadges({source:`Quelle: ${labelOf(sourceId)}`, ts:"Stand: lädt..."});
+  const r = await fetch(`${API_BASE}/api/now?source=${encodeURIComponent(sourceId)}`);
+  const d = await r.json();
+
+  setBadges({source:`Quelle: ${d.sourceUsed||labelOf(sourceId)}`, ts:`Stand: ${fmtTs(d.ts)}`});
+
+  // Cache-Badge
+  const cacheBadge = document.getElementById('cacheBadge');
+  if ((d.sourceUsed||"").startsWith('cache:last-good')) {
+    cacheBadge.textContent = 'aus Cache (Last-Good)';
+    cacheBadge.className = 'badge ok';
+  } else if ((d.sourceUsed||"").startsWith('fallback:mini')) {
+    cacheBadge.textContent = 'Fallback (Mini)';
+    cacheBadge.className = 'badge bad';
+  } else {
+    cacheBadge.textContent = '';
+    cacheBadge.className = 'badge';
+  }
+
+  renderItems(d.items||[]);
+  renderAttempts(d.attempts||[], d.error);
+
+  const total = (d.items||[]).length;
+  const live = (d.items||[]).filter(x => x.now && x.now.title && isNow(x.now)).length;
+  document.getElementById('summary').textContent = `Kanäle: ${total} · Live: ${live}`;
+  document.getElementById('summary').className = live>0 ? 'badge ok' : 'badge bad';
+}
+
+function renderItems(items){
+  const el = document.getElementById('content');
+  el.innerHTML = items.map(x=>{
+    const live = x.now && x.now.title ? `<div class="live">LIVE</div>`:"";
+    const now = x.now ? `
+      <div><strong>${esc(x.now.title)}</strong></div>
+      <div class="sub">${fmtTime(x.now.start)} – ${fmtTime(x.now.stop)}</div>
+    ` : `<div class="sub">Keine aktuelle Sendung</div>`;
+    const next = (x.next||[]).slice(0,2).map(n=>`
+      <div class="sub">Danach: ${esc(n.title)} (${fmtTime(n.start)})</div>
+    `).join("");
+    return `
+      <div class="card">
+        ${live}
+        <div class="hdr">
+          <div class="title">${esc(x.channel)}</div>
+          <div class="no">#${x.no}</div>
+        </div>
+        ${now}
+        ${next}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderAttempts(attempts, errorMsg){
+  const tb = document.querySelector('#attemptsTbl tbody');
+  tb.innerHTML = "";
+  let i=0;
+  attempts.forEach(a=>{
+    const name = a.ch || a.url || '';
+    const url = a.url || '';
+    const ok = a.ok===true;
+    const ms = a.ms ?? '';
+    const reason = a.reason || '';
+    const status = ok ? `<span class="badge ok">OK</span>` : `<span class="badge bad">FAIL</span>`;
+    tb.insertAdjacentHTML('beforeend', `
+      <tr>
+        <td>${++i}</td>
+        <td style="word-break:break-all">${esc(name)}<br><small>${esc(url)}</small></td>
+        <td>${status}</td>
+        <td>${ms}</td>
+        <td>${esc(reason)}</td>
+      </tr>
+    `);
+  });
+  if (errorMsg) {
+    tb.insertAdjacentHTML('beforeend', `
+      <tr><td colspan="5"><span class="badge bad">Error:</span> ${esc(errorMsg)}</td></tr>
+    `);
   }
 }
 
-function render(data){
-  const items = (data && data.items)||[];
-  document.getElementById('ts').textContent = data?.ts ? ('Stand: '+ new Date(data.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})) : '';
-  if(!items.length){ document.getElementById('root').innerHTML='<div class="card"><div class="title">Keine Daten</div></div>'; return; }
-  const cards = items.map(ch=>{
-    const now = ch.now ? `
-      <div class="title">${ch.now.title}</div>
-      <div class="time">${fmt(ch.now.start)} – ${fmt(ch.now.stop)}</div>
-    ` : `<div class="none">Keine aktuelle Sendung</div>`;
-    const next = (ch.next && ch.next.length) ? `
-      <div class="next">
-        ${ch.next.slice(0,2).map(n=>`<div class="nx"><span>${n.title}</span><span>${fmt(n.start)}</span></div>`).join('')}
-      </div>` : '';
-    return `
-      <div class="card">
-        <div class="hdr"><div class="name">${ch.channel}</div><div class="no">#${ch.no}</div></div>
-        ${now}
-        ${next}
-      </div>`;
-  }).join('');
-  document.getElementById('root').innerHTML = `<div class="grid">${cards}</div>`;
+async function probeAll(){
+  // Prüft jede Quelle (falls URL vorhanden) und zeigt Status in Attempt-Tabelle
+  const rows = [];
+  for (const s of SOURCES){
+    if (s.url) {
+      const r = await fetch(`${API_BASE}/api/validate?url=${encodeURIComponent(s.url)}`);
+      const d = await r.json();
+      rows.push({
+        ch: s.label,
+        url: s.url,
+        ok: d?.meta?.status>=200 && d?.meta?.status<300,
+        ms: d?.meta?.latency ?? '',
+        reason: d?.meta ? `${d.meta.status} ${d.meta.ct || ''}` : (d.error||'')
+      });
+    } else {
+      rows.push({ ch:s.label, url:"per Channel", ok:true, ms:"-", reason:"template"});
+    }
+  }
+  renderAttempts(rows, null);
 }
 
-document.getElementById('refresh').addEventListener('click', loadNow);
-loadNow();
-setInterval(loadNow, 300000);
+function setBadges({source, ts}){
+  document.getElementById('sourceBadge').textContent = source;
+  document.getElementById('ts').textContent = ts;
+}
+const labelOf = (id)=> (SOURCES.find(s=>s.id===id)?.label)||id;
+const fmtTs = (s)=> new Date(s).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const fmtTime = (s)=> new Date(s).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+const isNow = (n)=> new Date(n.start)<=new Date() && new Date()<new Date(n.stop);
+const esc = (s)=> String(s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
 </script>
 </body>
 </html>
