@@ -1,617 +1,183 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EPG-2 - Elektronischer Programmführer</title>
-    <style>
-        :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #1a1a1a;
-            --bg-card: #2a2a2a;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0a0;
-            --accent: #007aff;
-            --success: #30d158;
-            --warning: #ff9f0a;
-            --danger: #ff453a;
-            --border-radius: 12px;
-            --spacing-sm: 8px;
-            --spacing-md: 16px;
-            --spacing-lg: 24px;
-        }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EPG – Jetzt (Germany 2)</title>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<!-- Externes Design-Paket (ohne Build): Pico.css -->
+<link rel="stylesheet" href="https://unpkg.com/@picocss/pico@2/css/pico.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.5;
-            padding: var(--spacing-md);
-        }
+<style>
+/* ==== Feinschliff auf Basis Pico (Apple-clean) ==== */
+:root{
+  --bg:#0c1015; --card:#111824; --card2:#0f1621; --border:#1d2735;
+  --text:#e8edf3; --muted:#9aa6b2;
+  --accent:#67e8f9; --live:#86efac;
+  --chip:#121a26;
+  --gpt:#60a5fa; --imdb:#facc15; --rtU:#ef4444; --rtC:#22c55e;
+}
+:root, [data-theme="dark"]{
+  --pico-background-color: var(--bg);
+  --pico-color: var(--text);
+  --pico-muted-color: var(--muted);
+  --pico-card-background-color: var(--card);
+  --pico-border-color: var(--border);
+  --pico-form-element-background-color: var(--card2);
+}
+html,body{font-family:Inter, ui-sans-serif, -apple-system, "SF Pro Text", Segoe UI, Roboto, Helvetica, Arial, sans-serif;}
+.container{max-width:1120px;margin-inline:auto;padding:1rem 1rem 2.25rem;}
+header.header{
+  position:sticky; top:0; z-index:10;
+  backdrop-filter:saturate(180%) blur(8px);
+  background:linear-gradient(180deg, rgba(12,16,21,.9), rgba(12,16,21,.75));
+  border-bottom:1px solid var(--border);
+}
+h1{margin:0 0 .25rem 0; font-weight:800; letter-spacing:.2px}
+#stamp{font-size:.85rem; color:var(--muted)}
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+.grid{display:grid; gap:14px}
+@media (min-width:760px){ .grid{grid-template-columns:repeat(2, minmax(0,1fr));} }
+@media (min-width:1100px){ .grid{grid-template-columns:repeat(3, minmax(0,1fr));} }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-lg);
-            padding-bottom: var(--spacing-md);
-            border-bottom: 1px solid var(--bg-secondary);
-        }
+.card{
+  border:1px solid var(--border); border-radius:14px;
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  padding:14px 14px 12px; box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.03);
+  transition: transform .15s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.card:hover{ transform: translateY(-2px); border-color:#2b3a50; box-shadow: 0 16px 34px rgba(0,0,0,.26), inset 0 1px 0 rgba(255,255,255,.05); }
 
-        .logo {
-            font-size: 24px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-sm);
-        }
+.top{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.5rem}
+.ch{font-weight:800; font-size:1.05rem}
+.no{font-size:.72rem; color:var(--muted); background:var(--chip); border:1px solid var(--border);
+    padding:.18rem .55rem; border-radius:9999px}
 
-        .logo::before {
-            content: "📺";
-        }
+.now{font-weight:800; color:var(--live)}
+.time{color:var(--accent)}
+.muted{color:var(--muted)}
+.warn{color:#facc15}
 
-        .status {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-md);
-            font-size: 14px;
-        }
+ul{margin:.6rem 0 .2rem .2rem}
+ul li{margin:.15rem 0}
 
-        .last-update {
-            color: var(--text-secondary);
-        }
+.badges{display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.55rem}
+.badge{
+  font-size:.78rem; padding:.28rem .55rem; border-radius:.6rem; border:1px solid var(--border);
+  background:var(--chip); line-height:1;
+}
+.badge.gpt{ color:var(--gpt); border-color: color-mix(in oklab, var(--gpt) 60%, #000) }
+.badge.imdb{ color:var(--imdb); border-color: color-mix(in oklab, var(--imdb) 60%, #000) }
+.badge.rtU{ color:var(--rtU); border-color: color-mix(in oklab, var(--rtU) 60%, #000) }
+.badge.rtC{ color:var(--rtC); border-color: color-mix(in oklab, var(--rtC) 60%, #000) }
 
-        .refresh-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.2s;
-        }
+.small{font-size:.8rem; color:var(--muted); margin-top:.4rem}
+hr.sep{border-color:var(--border); opacity:.5; margin:.6rem 0}
 
-        .refresh-btn:hover {
-            background: #0056cc;
-        }
+/* Auto-Refresh Indicator */
+.refresh-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--live);
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
 
-        .refresh-btn:disabled {
-            background: var(--bg-secondary);
-            cursor: not-allowed;
-        }
-
-        .refresh-btn::before {
-            content: "↻";
-        }
-
-        .channels-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: var(--spacing-md);
-        }
-
-        .channel-card {
-            background: var(--bg-card);
-            border-radius: var(--border-radius);
-            padding: var(--spacing-md);
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .channel-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .channel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-md);
-            padding-bottom: var(--spacing-sm);
-            border-bottom: 1px solid var(--bg-secondary);
-        }
-
-        .channel-name {
-            font-weight: 600;
-            font-size: 16px;
-        }
-
-        .program-time {
-            color: var(--text-secondary);
-            font-size: 12px;
-        }
-
-        .current-program {
-            margin-bottom: var(--spacing-md);
-        }
-
-        .program-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: var(--spacing-sm);
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .program-title:hover {
-            color: var(--accent);
-        }
-
-        .program-time-range {
-            font-size: 14px;
-            color: var(--text-secondary);
-            display: flex;
-            gap: var(--spacing-sm);
-        }
-
-        .rating {
-            display: flex;
-            gap: var(--spacing-sm);
-            margin-top: var(--spacing-sm);
-        }
-
-        .rating-badge {
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 20px;
-            background: var(--bg-secondary);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .rating-imdb {
-            border-left: 3px solid #f5c518;
-        }
-
-        .rating-rt-critic {
-            border-left: 3px solid var(--success);
-        }
-
-        .rating-rt-user {
-            border-left: 3px solid var(--danger);
-        }
-
-        .next-programs {
-            border-top: 1px solid var(--bg-secondary);
-            padding-top: var(--spacing-md);
-        }
-
-        .next-title {
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin-bottom: var(--spacing-sm);
-        }
-
-        .next-program {
-            display: flex;
-            justify-content: space-between;
-            padding: var(--spacing-sm) 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .next-program:last-child {
-            border-bottom: none;
-        }
-
-        .next-program-title {
-            font-size: 14px;
-        }
-
-        .next-program-time {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .summary-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-
-        .summary-modal.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal-content {
-            background: var(--bg-card);
-            border-radius: var(--border-radius);
-            padding: var(--spacing-lg);
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: var(--spacing-md);
-            right: var(--spacing-md);
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 24px;
-            cursor: pointer;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-
-        .modal-close:hover {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .modal-title {
-            font-size: 20px;
-            margin-bottom: var(--spacing-md);
-            padding-right: 40px;
-        }
-
-        .modal-summary {
-            line-height: 1.6;
-            color: var(--text-secondary);
-        }
-
-        .loading {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: var(--accent);
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .error-message {
-            background: var(--danger);
-            color: white;
-            padding: var(--spacing-md);
-            border-radius: var(--border-radius);
-            margin-bottom: var(--spacing-md);
-            text-align: center;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: var(--spacing-lg);
-            color: var(--text-secondary);
-        }
-
-        @media (max-width: 768px) {
-            .channels-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            header {
-                flex-direction: column;
-                gap: var(--spacing-md);
-                align-items: flex-start;
-            }
-            
-            .status {
-                width: 100%;
-                justify-content: space-between;
-            }
-        }
-    </style>
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo">EPG-2</div>
-            <div class="status">
-                <div class="last-update" id="lastUpdate">Lade Daten...</div>
-                <button class="refresh-btn" id="refreshBtn">Aktualisieren</button>
-            </div>
-        </header>
 
-        <main>
-            <div id="errorContainer"></div>
-            <div class="channels-grid" id="channelsGrid"></div>
-        </main>
-    </div>
+<header class="header">
+  <div class="container">
+    <h1>EPG – Jetzt</h1>
+    <div id="stamp"><span class="refresh-indicator"></span>Lade aktuelle Sendungen...</div>
+  </div>
+</header>
 
-    <div class="summary-modal" id="summaryModal">
-        <div class="modal-content">
-            <button class="modal-close" id="modalClose">&times;</button>
-            <h3 class="modal-title" id="modalTitle"></h3>
-            <div class="modal-summary" id="modalSummary"></div>
-        </div>
-    </div>
+<main class="container">
+  <div id="root" class="grid"></div>
+</main>
 
-    <script>
-        // Konfiguration
-        const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
-        const REFRESH_INTERVAL = 60000; // 1 Minute
+<script>
+const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
+const api = API_BASE + "/api/now";
+const REFRESH_INTERVAL = 300000; // 5 Minuten
 
-        // DOM-Elemente
-        const channelsGrid = document.getElementById('channelsGrid');
-        const lastUpdateEl = document.getElementById('lastUpdate');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const errorContainer = document.getElementById('errorContainer');
-        const summaryModal = document.getElementById('summaryModal');
-        const modalClose = document.getElementById('modalClose');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalSummary = document.getElementById('modalSummary');
+const fmtTime = d => new Date(d).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
 
-        // Status-Variablen
-        let isLoading = false;
-        let refreshInterval;
+function nextList(arr){
+  if(!arr || !arr.length) return '<p class="muted" style="margin:.35rem 0 0">Keine weiteren Sendungen.</p>';
+  return `<ul>${arr.slice(0,2).map(p=>(
+    `<li>${p.title} <span class="time">(${fmtTime(p.start)}–${fmtTime(p.stop)})</span></li>`
+  )).join("")}</ul>`;
+}
 
-        // Initialisierung
-        document.addEventListener('DOMContentLoaded', () => {
-            loadEPGData();
-            setupEventListeners();
-            startAutoRefresh();
-        });
+function ratings(r){
+  if(!r) return "";
+  const chips=[];
+  if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
+  if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
+  if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
+  return chips.length ? `<div class="badges">${chips.join("")}</div>` : "";
+}
 
-        // Event-Listener einrichten
-        function setupEventListeners() {
-            refreshBtn.addEventListener('click', () => {
-                if (!isLoading) {
-                    loadEPGData();
-                }
-            });
+async function load(){
+  const stamp = document.getElementById("stamp");
+  const root = document.getElementById("root");
+  
+  try{
+    const r = await fetch(api, {cache:"no-store"});
+    const j = await r.json();
 
-            modalClose.addEventListener('click', () => {
-                summaryModal.classList.remove('active');
-            });
+    stamp.innerHTML = `<span class="refresh-indicator"></span>Stand: ${new Date(j.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"})}`;
+    root.innerHTML = "";
 
-            summaryModal.addEventListener('click', (e) => {
-                if (e.target === summaryModal) {
-                    summaryModal.classList.remove('active');
-                }
-            });
-        }
+    if (!j.items || j.items.length === 0) {
+      root.innerHTML = '<article class="card"><p class="muted">Keine Sendungen gefunden</p></article>';
+      return;
+    }
 
-        // Automatische Aktualisierung starten
-        function startAutoRefresh() {
-            refreshInterval = setInterval(() => {
-                if (!isLoading) {
-                    loadEPGData();
-                }
-            }, REFRESH_INTERVAL);
-        }
+    for (const it of j.items){
+      const card = document.createElement("article");
+      card.className = "card";
 
-        // EPG-Daten laden
-        async function loadEPGData() {
-            if (isLoading) return;
-            
-            isLoading = true;
-            refreshBtn.disabled = true;
-            refreshBtn.innerHTML = '<span class="loading"></span> Lädt...';
-            clearError();
+      const head = `
+        <div class="top">
+          <div class="ch">${it.channel}</div>
+          <span class="no">#${it.no}</span>
+        </div>`;
 
-            try {
-                const response = await fetch(`${API_BASE}/api/now`);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                
-                if (!data.items || !Array.isArray(data.items)) {
-                    throw new Error('Ungültiges Datenformat: items fehlt oder ist kein Array');
-                }
-                
-                renderChannels(data.items);
-                updateLastUpdate(data.ts);
-                
-            } catch (error) {
-                console.error('Fehler beim Laden der EPG-Daten:', error);
-                showError(`Fehler beim Laden der Programm-Daten: ${error.message}`);
-            } finally {
-                isLoading = false;
-                refreshBtn.disabled = false;
-                refreshBtn.innerHTML = '↻ Aktualisieren';
-            }
-        }
+      if (!it.now){
+        card.innerHTML = head + `<p class="warn">Kein aktuelles Programm gefunden</p>`;
+      } else {
+        const when = (it.now.start && it.now.stop) ? ` <span class="time">(${fmtTime(it.now.start)}–${fmtTime(it.now.stop)})</span>` : "";
+        card.innerHTML = head
+          + `<p class="now" style="margin:.15rem 0 .35rem">${it.now.title}${when}</p>`
+          + nextList(it.next)
+          + ratings(it.rating)
+          + (it.now.description ? `<div class="small">${it.now.description}</div>` : "");
+      }
 
-        // Kanäle rendern
-        function renderChannels(channels) {
-            if (channels.length === 0) {
-                channelsGrid.innerHTML = '<div class="empty-state">Keine Sendungen verfügbar</div>';
-                return;
-            }
+      root.appendChild(card);
+    }
+  }catch(e){
+    stamp.innerHTML = `<span class="warn">⚠️</span> Fehler: ${e?.message || e}`;
+    console.error('Load error:', e);
+  }
+}
 
-            channelsGrid.innerHTML = channels.map(channel => `
-                <div class="channel-card">
-                    <div class="channel-header">
-                        <div class="channel-name">${escapeHtml(channel.channel)}</div>
-                        <div class="program-time">${formatTime(channel.now.start)} - ${formatTime(channel.now.stop)}</div>
-                    </div>
-                    
-                    <div class="current-program">
-                        <div class="program-title" onclick="showSummary('${escapeHtml(channel.now.title)}')">
-                            ${escapeHtml(channel.now.title)}
-                        </div>
-                        <div class="program-time-range">
-                            <span>Jetzt</span>
-                            <span>•</span>
-                            <span>${formatTime(channel.now.start)} - ${formatTime(channel.now.stop)}</span>
-                        </div>
-                        ${renderRatings(channel.rating)}
-                    </div>
-                    
-                    ${renderNextPrograms(channel.next)}
-                </div>
-            `).join('');
-        }
-
-        // Bewertungen rendern
-        function renderRatings(rating) {
-            if (!rating || (rating.imdb === null && rating.rottenTomatoes === null)) {
-                return '';
-            }
-
-            let ratingsHtml = '<div class="rating">';
-            
-            if (rating.imdb !== null) {
-                ratingsHtml += `
-                    <div class="rating-badge rating-imdb">
-                        IMDb: ${rating.imdb}
-                    </div>
-                `;
-            }
-            
-            if (rating.rottenTomatoes && rating.rottenTomatoes.critic !== null) {
-                ratingsHtml += `
-                    <div class="rating-badge rating-rt-critic">
-                        RT: ${rating.rottenTomatoes.critic}%
-                    </div>
-                `;
-            }
-            
-            if (rating.rottenTomatoes && rating.rottenTomatoes.user !== null) {
-                ratingsHtml += `
-                    <div class="rating-badge rating-rt-user">
-                        RT User: ${rating.rottenTomatoes.user}%
-                    </div>
-                `;
-            }
-            
-            ratingsHtml += '</div>';
-            return ratingsHtml;
-        }
-
-        // Nächste Sendungen rendern
-        function renderNextPrograms(nextPrograms) {
-            if (!nextPrograms || nextPrograms.length === 0) {
-                return '';
-            }
-
-            const nextItems = nextPrograms.slice(0, 2).map(program => `
-                <div class="next-program">
-                    <div class="next-program-title" onclick="showSummary('${escapeHtml(program.title)}')">
-                        ${escapeHtml(program.title)}
-                    </div>
-                    <div class="next-program-time">
-                        ${formatTime(program.start)}
-                    </div>
-                </div>
-            `).join('');
-
-            return `
-                <div class="next-programs">
-                    <div class="next-title">Als nächstes:</div>
-                    ${nextItems}
-                </div>
-            `;
-        }
-
-        // Zusammenfassung anzeigen
-        async function showSummary(title) {
-            modalTitle.textContent = title;
-            modalSummary.innerHTML = '<div class="loading"></div> Lade Zusammenfassung...';
-            summaryModal.classList.add('active');
-
-            try {
-                const response = await fetch(`${API_BASE}/api/sum`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ title: title })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                modalSummary.textContent = data.summary || 'Keine Zusammenfassung verfügbar.';
-            } catch (error) {
-                console.error('Fehler beim Laden der Zusammenfassung:', error);
-                modalSummary.textContent = 'Zusammenfassung konnte nicht geladen werden.';
-            }
-        }
-
-        // Letztes Update aktualisieren
-        function updateLastUpdate(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            
-            let timeText;
-            if (diffMins < 1) {
-                timeText = 'Gerade eben';
-            } else if (diffMins === 1) {
-                timeText = 'Vor 1 Minute';
-            } else {
-                timeText = `Vor ${diffMins} Minuten`;
-            }
-            
-            lastUpdateEl.textContent = `Aktualisiert: ${timeText}`;
-        }
-
-        // Fehler anzeigen
-        function showError(message) {
-            errorContainer.innerHTML = `
-                <div class="error-message">
-                    ${escapeHtml(message)}
-                </div>
-            `;
-        }
-
-        // Fehler löschen
-        function clearError() {
-            errorContainer.innerHTML = '';
-        }
-
-        // Hilfsfunktionen
-        function formatTime(isoString) {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString('de-DE', { 
-                hour: '2-digit', 
-                minute: '2-digit'
-            });
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Globale Funktionen für Event-Handler
-        window.showSummary = showSummary;
-    </script>
+// Auto-Refresh
+load();
+setInterval(load, REFRESH_INTERVAL);
+</script>
 </body>
 </html>
