@@ -43,8 +43,7 @@ body{background:var(--bg);color:var(--text);
 // ========== HIER DEIN OPENAI-KEY EINTRAGEN ==========
 const OPENAI_KEY = "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";  // <— DEIN OpenAI API Key (mit "sk-")
 // ===================================================
-
-const api = "/api/now";
+const API_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
 const t = d => new Date(d).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
 
 // GPT-Trailer (direkt aus dem Browser; du wolltest Key im Frontend)
