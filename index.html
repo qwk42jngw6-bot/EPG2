@@ -3,221 +3,144 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>TV Programm</title>
+<title>EPG – Jetzt</title>
 <style>
-  body{background:#0f1419;color:#e2e8f0;font-family:system-ui,sans-serif;margin:0;padding:16px}
-  .container{max-width:1400px;margin:0 auto}
-  .header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-  .tabs{display:flex;gap:8px;flex-wrap:wrap}
-  .tab{padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#1e293b;cursor:pointer;font-size:13px}
-  .tab.active{outline:2px solid #3b82f6}
-  .btn{padding:8px 10px;border:1px solid #334155;border-radius:8px;background:#0b2a4a;cursor:pointer;font-size:13px}
-  .badge{font-size:11px;padding:2px 6px;border-radius:6px;border:1px solid #334155}
-  .ok{background:#052e1b;border-color:#14532d;color:#34d399}
-  .bad{background:#3b0a0a;border-color:#7f1d1d;color:#fca5a5}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:12px}
+  body{margin:0;background:#0f1419;color:#e2e8f0;font-family:system-ui,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:16px}
+  .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .tabs button{background:#1e293b;border:1px solid #334155;color:#cbd5e1;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .tabs button.active{background:#0b5cff;border-color:#0b5cff;color:#fff}
+  .force{display:flex;gap:8px;align-items:center}
+  .force input{width:70px;padding:6px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0}
+  .btn{padding:8px 12px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#cbd5e1;cursor:pointer}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:16px}
   .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;position:relative}
-  .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .title{font-weight:600}
-  .no{background:#1e40af;color:#93c5fd;font-size:12px;padding:2px 8px;border-radius:8px}
-  .live{position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:10px;padding:2px 8px;border-radius:10px}
-  .sub{font-size:12px;color:#94a3b8}
-  .debug{margin-top:16px;background:#0b1220;border:1px solid #1f2937;border-radius:12px}
-  .debug h3{margin:0;padding:10px 12px;border-bottom:1px solid #1f2937}
-  table{width:100%;border-collapse:collapse;font-size:12px}
-  th,td{border-top:1px solid #1f2937;padding:8px}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .no{background:#1e40af;color:#60a5fa;padding:2px 8px;border-radius:6px;font-weight:700}
+  .live{position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;border-radius:12px;padding:2px 8px;font-size:11px}
+  .sub{color:#94a3b8;font-size:12px}
+  .next{border-top:1px solid #334155;margin-top:8px;padding-top:8px;color:#94a3b8;font-size:12px}
+  .stamp{color:#94a3b8;margin-top:8px}
+  details{margin-top:16px;background:#0b1220;border:1px solid #334155;border-radius:8px;padding:8px}
+  summary{cursor:pointer}
+  pre{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#a3bffa}
+  .err{background:#7f1d1d;border:1px solid #dc2626;padding:10px;border-radius:8px;margin-top:10px;color:#fca5a5}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="header">
-    <div class="tabs" id="tabs"></div>
-    <button class="btn" id="probe">Alle prüfen</button>
-    <span id="sourceBadge" class="badge">Quelle: –</span>
-    <span id="ts" class="badge">Stand: –</span>
-  </div>
-
-  <div class="row">
-    <span id="summary" class="badge"></span>
-    <span id="cacheBadge" class="badge"></span>
+<div class="wrap">
+  <div class="top">
+    <div class="tabs">
+      <button data-set="single" class="active">Einzel-Feeds</button>
+      <button data-set="alt">Alternativ</button>
+      <button data-set="all">Alle</button>
+    </div>
+    <div class="force">
+      <label>Quelle erzwingen (Index): <input id="forceIdx" type="number" min="0" step="1" placeholder="z.B. 0"></label>
+      <button class="btn" id="btnReload">Neu laden</button>
+      <button class="btn" id="btnList">Quellenliste</button>
+    </div>
+    <div id="used" class="stamp"></div>
   </div>
 
   <div id="content" class="grid"></div>
 
-  <div class="debug">
-    <h3>Debug / Versuche</h3>
-    <div style="padding:8px 12px">
-      <table id="attemptsTbl">
-        <thead>
-          <tr><th>#</th><th>Sender/URL</th><th>Status</th><th>ms</th><th>Hinweis</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
+  <details id="dbg">
+    <summary>Debug</summary>
+    <div id="debugBox"></div>
+  </details>
 </div>
 
 <script>
-const API_BASE = location.origin; // passe an, falls anders gehostet
-let SOURCES = [];
-let current = null;
+const API = "https://waterfall-epg.w2gy9ymm7y.workers.dev"; // deinen Worker-Host einsetzen, falls anders
+let currentSet = "single";
 
-init();
-
-async function init(){
-  await loadSources();
-  renderTabs();
-  // Lade initial erste Quelle
-  if (SOURCES[0]) {
-    current = SOURCES[0].id;
-    selectTab(current);
-    await loadNow(current);
-  }
-  document.getElementById('probe').onclick = probeAll;
-}
-
-async function loadSources(){
-  const r = await fetch(`${API_BASE}/api/sources`);
-  const d = await r.json();
-  SOURCES = d.sources;
-}
-
-function renderTabs(){
-  const el = document.getElementById('tabs');
-  el.innerHTML = "";
-  SOURCES.forEach(s=>{
-    const b = document.createElement('button');
-    b.className = 'tab';
-    b.textContent = s.label;
-    b.onclick = async ()=>{
-      current = s.id;
-      selectTab(current);
-      await loadNow(current);
-    };
-    b.dataset.id = s.id;
-    el.appendChild(b);
+document.querySelectorAll(".tabs button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    currentSet = b.dataset.set;
+    loadNow();
   });
-}
-function selectTab(id){
-  document.querySelectorAll('.tab').forEach(t=>{
-    t.classList.toggle('active', t.dataset.id===id);
-  });
-}
+});
 
-async function loadNow(sourceId){
-  setBadges({source:`Quelle: ${labelOf(sourceId)}`, ts:"Stand: lädt..."});
-  const r = await fetch(`${API_BASE}/api/now?source=${encodeURIComponent(sourceId)}`);
+document.getElementById("btnReload").addEventListener("click", loadNow);
+document.getElementById("btnList").addEventListener("click", async ()=>{
+  const r = await fetch(`${API}/api/sources?set=${currentSet}`);
   const d = await r.json();
+  dumpDebug({type:"sources", data:d});
+  alert(`Set "${currentSet}"\nQuellen:\n` + d.sources.map((s,i)=>`[${i}] ${s}`).join("\n"));
+});
 
-  setBadges({source:`Quelle: ${d.sourceUsed||labelOf(sourceId)}`, ts:`Stand: ${fmtTs(d.ts)}`});
-
-  // Cache-Badge
-  const cacheBadge = document.getElementById('cacheBadge');
-  if ((d.sourceUsed||"").startsWith('cache:last-good')) {
-    cacheBadge.textContent = 'aus Cache (Last-Good)';
-    cacheBadge.className = 'badge ok';
-  } else if ((d.sourceUsed||"").startsWith('fallback:mini')) {
-    cacheBadge.textContent = 'Fallback (Mini)';
-    cacheBadge.className = 'badge bad';
-  } else {
-    cacheBadge.textContent = '';
-    cacheBadge.className = 'badge';
+async function loadNow(){
+  const idx = document.getElementById("forceIdx").value.trim();
+  const p = new URLSearchParams({ set: currentSet, debug: "1" });
+  if (idx !== "") p.set("i", idx);
+  try{
+    const r = await fetch(`${API}/api/now?`+p.toString());
+    const data = await r.json();
+    render(data);
+    dumpDebug({type:"now", data});
+  }catch(e){
+    showError("NetworkError: " + e.message);
   }
-
-  renderItems(d.items||[]);
-  renderAttempts(d.attempts||[], d.error);
-
-  const total = (d.items||[]).length;
-  const live = (d.items||[]).filter(x => x.now && x.now.title && isNow(x.now)).length;
-  document.getElementById('summary').textContent = `Kanäle: ${total} · Live: ${live}`;
-  document.getElementById('summary').className = live>0 ? 'badge ok' : 'badge bad';
 }
 
-function renderItems(items){
-  const el = document.getElementById('content');
-  el.innerHTML = items.map(x=>{
-    const live = x.now && x.now.title ? `<div class="live">LIVE</div>`:"";
-    const now = x.now ? `
-      <div><strong>${esc(x.now.title)}</strong></div>
-      <div class="sub">${fmtTime(x.now.start)} – ${fmtTime(x.now.stop)}</div>
-    ` : `<div class="sub">Keine aktuelle Sendung</div>`;
-    const next = (x.next||[]).slice(0,2).map(n=>`
-      <div class="sub">Danach: ${esc(n.title)} (${fmtTime(n.start)})</div>
-    `).join("");
-    return `
-      <div class="card">
-        ${live}
-        <div class="hdr">
-          <div class="title">${esc(x.channel)}</div>
-          <div class="no">#${x.no}</div>
-        </div>
-        ${now}
-        ${next}
+function render(data){
+  const box = document.getElementById("content");
+  const used = document.getElementById("used");
+  box.innerHTML = "";
+  used.textContent = data.sourceUsed ? `Quelle: ${data.sourceUsed}` : "";
+
+  (data.items||[]).forEach(ch=>{
+    const live = ch.now && ch.now.title;
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      ${live ? `<div class="live">LIVE</div>` : ``}
+      <div class="head">
+        <div><strong>${escapeHtml(ch.channel)}</strong></div>
+        <div class="no">#${ch.no}</div>
       </div>
+      <div>
+        ${live ? `
+          <div>${escapeHtml(ch.now.title)}</div>
+          <div class="sub">${fmt(ch.now.start)} – ${fmt(ch.now.stop)}</div>
+        ` : `<div class="sub">Keine aktuelle Sendung</div>`}
+      </div>
+      ${ch.next && ch.next.length ? `
+        <div class="next">
+          ${ch.next.map(n=>`<div>${escapeHtml(n.title)} <span class="sub">(${fmt(n.start)})</span></div>`).join("")}
+        </div>` : ``}
     `;
-  }).join("");
-}
-
-function renderAttempts(attempts, errorMsg){
-  const tb = document.querySelector('#attemptsTbl tbody');
-  tb.innerHTML = "";
-  let i=0;
-  attempts.forEach(a=>{
-    const name = a.ch || a.url || '';
-    const url = a.url || '';
-    const ok = a.ok===true;
-    const ms = a.ms ?? '';
-    const reason = a.reason || '';
-    const status = ok ? `<span class="badge ok">OK</span>` : `<span class="badge bad">FAIL</span>`;
-    tb.insertAdjacentHTML('beforeend', `
-      <tr>
-        <td>${++i}</td>
-        <td style="word-break:break-all">${esc(name)}<br><small>${esc(url)}</small></td>
-        <td>${status}</td>
-        <td>${ms}</td>
-        <td>${esc(reason)}</td>
-      </tr>
-    `);
+    box.appendChild(div);
   });
-  if (errorMsg) {
-    tb.insertAdjacentHTML('beforeend', `
-      <tr><td colspan="5"><span class="badge bad">Error:</span> ${esc(errorMsg)}</td></tr>
-    `);
-  }
 }
 
-async function probeAll(){
-  // Prüft jede Quelle (falls URL vorhanden) und zeigt Status in Attempt-Tabelle
-  const rows = [];
-  for (const s of SOURCES){
-    if (s.url) {
-      const r = await fetch(`${API_BASE}/api/validate?url=${encodeURIComponent(s.url)}`);
-      const d = await r.json();
-      rows.push({
-        ch: s.label,
-        url: s.url,
-        ok: d?.meta?.status>=200 && d?.meta?.status<300,
-        ms: d?.meta?.latency ?? '',
-        reason: d?.meta ? `${d.meta.status} ${d.meta.ct || ''}` : (d.error||'')
-      });
-    } else {
-      rows.push({ ch:s.label, url:"per Channel", ok:true, ms:"-", reason:"template"});
-    }
-  }
-  renderAttempts(rows, null);
+function showError(msg){
+  document.getElementById("content").innerHTML = `<div class="err">${msg}</div>`;
 }
 
-function setBadges({source, ts}){
-  document.getElementById('sourceBadge').textContent = source;
-  document.getElementById('ts').textContent = ts;
+function fmt(iso){
+  try{
+    const d = new Date(iso);
+    return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+  }catch{ return ""; }
 }
-const labelOf = (id)=> (SOURCES.find(s=>s.id===id)?.label)||id;
-const fmtTs = (s)=> new Date(s).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-const fmtTime = (s)=> new Date(s).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-const isNow = (n)=> new Date(n.start)<=new Date() && new Date()<new Date(n.stop);
-const esc = (s)=> String(s||"").replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+
+function dumpDebug(obj){
+  const el = document.getElementById("debugBox");
+  const pre = document.createElement("pre");
+  pre.textContent = JSON.stringify(obj,null,2);
+  el.prepend(pre);
+  // nur die letzten 6 Blöcke behalten
+  while(el.childNodes.length>6) el.removeChild(el.lastChild);
+}
+
+function escapeHtml(s){return (s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;" }[m]));}
+
+// Start
+loadNow();
 </script>
 </body>
 </html>
