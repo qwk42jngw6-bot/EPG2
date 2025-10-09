@@ -92,6 +92,13 @@ hr.sep{border-color:var(--border); opacity:.5; margin:.6rem 0}
   50% { opacity: 0.5; }
   100% { opacity: 1; }
 }
+
+/* Empty state styling */
+.empty-program {
+  font-style: italic;
+  color: var(--muted);
+  margin: 0.5rem 0;
+}
 </style>
 </head>
 <body>
@@ -127,6 +134,7 @@ function ratings(r){
   if(r.imdb!=null) chips.push(`<span class="badge imdb">IMDb ${r.imdb}</span>`);
   if(r.rtUser!=null) chips.push(`<span class="badge rtU">RT-User ${r.rtUser}%</span>`);
   if(r.rtCritic!=null) chips.push(`<span class="badge rtC">RT-Kritik ${r.rtCritic}%</span>`);
+  if(r.gpt!=null) chips.push(`<span class="badge gpt">GPT ${r.gpt}/10</span>`);
   return chips.length ? `<div class="badges">${chips.join("")}</div>` : "";
 }
 
@@ -156,15 +164,16 @@ async function load(){
           <span class="no">#${it.no}</span>
         </div>`;
 
-      if (!it.now){
-        card.innerHTML = head + `<p class="warn">Kein aktuelles Programm gefunden</p>`;
+      // Korrekte Behandlung von null/undefined now
+      if (!it.now || !it.now.title) {
+        card.innerHTML = head + `<p class="empty-program">Derzeit keine Sendung</p>`;
       } else {
         const when = (it.now.start && it.now.stop) ? ` <span class="time">(${fmtTime(it.now.start)}–${fmtTime(it.now.stop)})</span>` : "";
         card.innerHTML = head
           + `<p class="now" style="margin:.15rem 0 .35rem">${it.now.title}${when}</p>`
           + nextList(it.next)
           + ratings(it.rating)
-          + (it.now.description ? `<div class="small">${it.now.description}</div>` : "");
+          + (it.original ? `<div class="small">Original: ${it.original}</div>` : "");
       }
 
       root.appendChild(card);
