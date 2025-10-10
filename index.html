@@ -1,277 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>TV Programm – EPG</title>
-  <style>
-    :root{
-      --bg:#0f1419;--card:#1a1f26;--card2:#1e293b;--muted:#94a3b8;--line:#2a2f35;
-      --accent:#3b82f6;--ok:#10b981;--bad:#ef4444;--warn:#f59e0b;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;padding:16px;background:var(--bg);color:#e5e7eb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,'Helvetica Neue',Arial}
-    .container{max-width:1400px;margin:0 auto}
-    header{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-    h1{margin:0;font-size:20px}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    select,button{
-      background:var(--card);color:#e5e7eb;border:1px solid var(--line);border-radius:8px;
-      padding:8px 10px;font-size:14px;cursor:pointer
-    }
-    button.primary{background:var(--accent);border-color:transparent}
-    button.ghost{background:transparent}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .stamp{color:var(--muted);font-size:12px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-    .card{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative}
-    .row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-    .badge{font-size:11px;padding:2px 8px;border-radius:999px;background:#334155;color:#cbd5e1}
-    .badge.live{background:#dc2626;color:#fff}
-    .ch-no{background:#1e3a8a;color:#93c5fd;border-radius:6px;padding:2px 8px;font-weight:600}
-    .title{font-weight:600}
-    .muted{color:var(--muted);font-size:12px}
-    .err{background:#7f1d1d;border:1px solid #b91c1c;color:#fecaca;padding:12px;border-radius:10px;margin:12px 0}
-    .panel{margin-top:18px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
-    table{width:100%;border-collapse:collapse}
-    th,td{font-size:12px;padding:8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-    th{color:#cbd5e1}
-    .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)}
-    code,pre{background:#0b1015;border:1px solid #141a20;color:#cbd5e1;border-radius:8px;padding:8px;display:block;overflow:auto}
-    .small{font-size:12px}
-    @media (max-width:720px){.grid{grid-template-columns:1fr}}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TV Programm</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0f1419; color:#e2e8f0; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .header { display:flex; gap:8px; align-items:baseline; border-bottom:1px solid #334155; padding-bottom:10px; margin-bottom:12px; }
+  h1 { margin: 0; font-size: 22px; }
+  .timestamp { font-size: 12px; opacity: .7; }
+
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 16px; }
+  .toolbar button {
+    background:#1e293b; color:#e2e8f0; border:1px solid #334155; border-radius:8px; padding:8px 10px; cursor:pointer;
+  }
+  .toolbar button:hover { border-color:#475569; transform: translateY(-1px); }
+
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin: 0 0 12px; }
+  .stat { background:#0b1220; border:1px solid #334155; border-radius:8px; padding:8px 10px; }
+  .stat b { font-size: 16px; }
+
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px; }
+  .card { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:12px; position:relative; }
+  .ch { font-weight:600; }
+  .no { font-size:12px; opacity:.7; }
+  .live { position:absolute; top:10px; right:10px; font-size:10px; background:#dc2626; color:#fff; padding:3px 8px; border-radius:999px; }
+  .current { margin:8px 0; }
+  .title { font-size:14px; }
+  .time { font-size:12px; opacity:.8; }
+  .next { border-top:1px solid #334155; margin-top:8px; padding-top:8px; }
+  .next-item { display:flex; justify-content:space-between; font-size:12px; opacity:.9; }
+
+  .errorbox { background:#7f1d1d; border:1px solid #dc2626; color:#fca5a5; border-radius:8px; padding:12px; margin:12px 0; }
+  .loading { text-align:center; padding:40px 0; opacity:.8; }
+  .attempts { background:#0b1220; border:1px dashed #334155; border-radius:8px; padding:10px; margin:14px 0; }
+  .attempt { font-size:12px; border:1px dashed #334155; border-radius:6px; padding:8px; margin-top:8px; }
+  .footer { font-size:12px; opacity:.7; margin-top:16px; }
+</style>
 </head>
 <body>
-<div class="container">
-  <header>
-    <div>
-      <h1>TV Programm – EPG</h1>
-      <div class="stamp" id="stamp">–</div>
+  <div class="container">
+    <div class="header">
+      <h1>TV Programm</h1>
+      <div class="timestamp" id="ts"></div>
     </div>
-    <div class="controls">
-      <label class="small">Quelle:</label>
-      <select id="sourceSet">
-        <option value="auto">Auto</option>
-        <option value="single">Single (kleine Feeds)</option>
-        <option value="alt">Alt</option>
-        <option value="all">All</option>
-        <option value="fallback">Fallback (Testdaten)</option>
-      </select>
-      <button id="btnReload" class="primary">Aktualisieren</button>
-      <button id="btnToggleAuto" class="ghost" title="Auto-Refresh alle 5 Min.">Auto-Refresh: Aus</button>
-      <button id="btnCheckAll">Alle Quellen prüfen</button>
-      <a id="btnOpenDebug" class="ghost" href="debug.html" target="_blank" rel="noopener">Debug-Seite öffnen</a>
+
+    <div class="toolbar">
+      <button data-set="live">Live (xmltv.info + epg.pw)</button>
+      <button data-set="alt">Alt (Testquellen)</button>
+      <button id="btn-adhoc">Ad-hoc URL(s)</button>
+      <div style="margin-left:auto; font-size:12px; opacity:.8" id="activeSet"></div>
     </div>
-  </header>
 
-  <div id="errorBox" class="err" style="display:none;"></div>
-
-  <section id="cards" class="grid"></section>
-
-  <section class="panel">
-    <div class="row">
-      <div class="title">Debug (letzte Antwort)</div>
-      <div class="badge" id="dbgSource">–</div>
+    <div class="stats">
+      <div class="stat"><b id="total">0</b> Kanäle</div>
+      <div class="stat"><b id="livecount">0</b> Live</div>
     </div>
-    <div class="small muted" id="dbgInfo">–</div>
-    <details style="margin-top:8px">
-      <summary>Versuche / Fehlermeldungen</summary>
-      <div id="attemptsWrap" class="small" style="margin-top:8px">–</div>
-    </details>
-    <details style="margin-top:8px">
-      <summary>cURL für diese Auswahl</summary>
-      <pre id="curlBox">curl -s "…" | jq</pre>
-    </details>
-  </section>
 
-  <section class="panel" style="margin-top:14px">
-    <div class="row"><div class="title">Quellen-Scan</div></div>
-    <div id="scanArea" class="small muted">Noch kein Scan durchgeführt. Klicke „Alle Quellen prüfen“.</div>
-    <div style="margin-top:10px"><table id="scanTable" style="display:none">
-      <thead><tr>
-        <th>#</th><th>URL</th><th>Status</th><th>Content-Type</th><th>Bytes</th><th>Snippet</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table></div>
-  </section>
-</div>
+    <div id="error"></div>
+    <div id="content"></div>
+    <div id="attempts"></div>
+    <div class="footer" id="footer"></div>
+  </div>
 
 <script>
-  // === Einstellungen ===
-  const WORKER_BASE = 'https://waterfall-epg.w2gy9ymm7y.workers.dev'; // <-- anpassen, falls nötig
-  const AUTO_REFRESH_MS = 5 * 60 * 1000;
+const API = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
 
-  const el = (id)=>document.getElementById(id);
-  const cards = el('cards');
-  const errBox = el('errorBox');
-  const stamp = el('stamp');
-  const dbgSource = el('dbgSource');
-  const dbgInfo = el('dbgInfo');
-  const attemptsWrap = el('attemptsWrap');
-  const curlBox = el('curlBox');
-  const scanArea = el('scanArea');
-  const scanTable = el('scanTable');
-  const scanBody = scanTable.querySelector('tbody');
+document.querySelectorAll('button[data-set]').forEach(b=>{
+  b.addEventListener('click', ()=> loadNow({ set: b.getAttribute('data-set') }));
+});
 
-  let autoTimer = null;
+document.getElementById('btn-adhoc').addEventListener('click', ()=>{
+  const val = prompt("Gib Quelle(n) ein (Komma oder | trennen):", "https://xmltv.info/de/epg.xml,https://epg.pw/xmltv/epg_DE.xml");
+  if (val) loadNow({ src: val });
+});
 
-  function setError(msg){
-    if(!msg){ errBox.style.display='none'; errBox.textContent=''; return; }
-    errBox.style.display='block';
-    errBox.textContent = msg;
-  }
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+}
 
-  function fmtTime(iso){
-    try{
-      return new Date(iso).toLocaleString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    }catch{ return iso || '—'; }
-  }
+function setText(id, s) { const el = document.getElementById(id); if (el) el.textContent = s; }
 
-  function renderItems(data){
-    const items = Array.isArray(data.items)?data.items:[];
-    cards.innerHTML = items.map(ch=>{
-      const now = ch.now;
-      const live = now && now.title;
-      const next = (ch.next||[]).slice(0,2);
-      return `
-        <div class="card">
-          ${live?`<span class="badge live" style="position:absolute;right:12px;top:12px">LIVE</span>`:''}
-          <div class="row">
-            <div class="title">${ch.channel||'—'}</div>
-            <div class="ch-no">#${ch.no||'–'}</div>
-          </div>
-          <div class="small">${ live
-              ? `<div><strong>${now.title}</strong></div>
-                 <div class="muted">${fmtTime(now.start)} – ${fmtTime(now.stop)}</div>`
-              : `<div class="muted">Keine aktuelle Sendung</div>`}
-          </div>
-          ${next.length?`
-            <div class="small" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
-              ${next.map(n=>`
-                <div class="row" style="gap:12px">
-                  <div class="muted">${fmtTime(n.start)}</div>
-                  <div style="flex:1">${n.title||'—'}</div>
-                </div>`).join('')}
-            </div>`:''}
-        </div>`;
-    }).join('');
-  }
+function showLoading() {
+  document.getElementById('error').innerHTML = "";
+  document.getElementById('attempts').innerHTML = "";
+  document.getElementById('content').innerHTML = `<div class="loading">Lade TV-Programm…</div>`;
+}
 
-  function renderDebug(data, setName){
-    stamp.textContent = data.ts ? `Stand: ${fmtTime(data.ts)}` : '–';
-    const src = data.sourceUsed || (data.debug && data.debug.sourceUsed) || '–';
-    dbgSource.textContent = src;
-    const okCount = (data.items||[]).filter(x=>x.now && x.now.title).length;
-    const total = (data.items||[]).length;
-    dbgInfo.textContent = `Set: ${setName} • Treffer (mit „now“): ${okCount}/${total}`;
+function showError(title, msg) {
+  document.getElementById('error').innerHTML = `<div class="errorbox"><b>${title}</b><div>${msg||""}</div></div>`;
+}
 
-    const attempts = data.attempts || data.debug || data.sources || [];
-    if(Array.isArray(attempts) && attempts.length){
-      attemptsWrap.innerHTML = `<table><thead><tr>
-        <th>#</th><th>URL</th><th>Ergebnis</th></tr></thead><tbody>${
-          attempts.map((a,i)=>`
-            <tr>
-              <td>${i+1}</td>
-              <td style="word-break:break-all">${a.url || a.src || '–'}</td>
-              <td>${a.error || a.status || JSON.stringify(a).slice(0,120)}</td>
-            </tr>`).join('')
-        }</tbody></table>`;
-    }else{
-      attemptsWrap.textContent = 'Keine Versuchs-Infos verfügbar.';
+function showAttempts(attempts=[]) {
+  const box = document.getElementById('attempts');
+  if (!attempts.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `
+    <div class="attempts">
+      <div style="font-weight:600;margin-bottom:6px">Fetch-Versuche</div>
+      ${attempts.map((a,i)=>`
+        <div class="attempt">
+          <div><b>#${i}</b> ${a.src||a.url||''}</div>
+          <div>Status: ${a.status ?? (a.ok===false?'ERR':'OK')} · CT: ${a.ct||'-'} · Len: ${a.len||'-'}</div>
+          ${a.hint?`<div>Hinweis: ${a.hint}</div>`:''}
+          ${a.error?`<div>Error: ${a.error}</div>`:''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderItems(data) {
+  const items = data.items || [];
+  let liveCount = 0;
+  const cards = items.map(it=>{
+    const hasNow = it.now && it.now.title;
+    if (hasNow) liveCount++;
+    return `
+      <div class="card">
+        ${hasNow?`<div class="live">LIVE</div>`:''}
+        <div class="ch">${it.channel} <span class="no">#${it.no}</span></div>
+        <div class="current">
+          ${hasNow
+            ? `<div class="title">${it.now.title}</div>
+               <div class="time">${fmtTime(it.now.start)} – ${fmtTime(it.now.stop)}</div>`
+            : `<div class="title" style="opacity:.7"><i>Keine aktuelle Sendung</i></div>`
+          }
+        </div>
+        ${it.next && it.next.length ? `
+          <div class="next">
+            ${it.next.map(n=>`
+              <div class="next-item">
+                <span>${n.title}</span>
+                <span>${fmtTime(n.start)}</span>
+              </div>
+            `).join('')}
+          </div>` : ``}
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `<div class="grid">${cards}</div>`;
+  setText('livecount', liveCount.toString());
+  setText('total', items.length.toString());
+  if (data.ts) setText('ts', `Aktualisiert: ${new Date(data.ts).toLocaleString('de-DE')}`);
+  const source = data.sourceUsed || '';
+  setText('activeSet', source ? `Quelle: ${source}` : '');
+  document.getElementById('footer').textContent = source ? `Quelle: ${source}` : '';
+}
+
+async function loadNow({ set, src } = {}) {
+  showLoading();
+  const qs = new URLSearchParams();
+  if (set) qs.set('set', set);
+  if (src) qs.set('src', src);
+
+  try {
+    const r = await fetch(`${API}/api/now?${qs.toString()}`);
+    const data = await r.json();
+    if (data.items?.length) {
+      renderItems(data);
+    } else {
+      showError("Keine Programme", "Es wurden keine Programme gefunden.");
     }
+    showAttempts(data.attempts || []);
+  } catch (e) {
+    showError("Ladefehler", e.message || String(e));
   }
+}
 
-  function renderCurl(setName){
-    const nowUrl = `${WORKER_BASE}/api/now?set=${encodeURIComponent(setName)}`;
-    const scanUrl = `${WORKER_BASE}/api/debug-scan?set=${encodeURIComponent(setName)}`;
-    curlBox.textContent =
-`# API „Now“:
-curl -s "${nowUrl}" | jq
+// Auto-Refresh alle 5 Minuten
+setInterval(()=> loadNow(), 300000);
 
-# Quellen-Scan:
-curl -s "${scanUrl}" | jq`;
-  }
-
-  async function fetchJSON(url){
-    const r = await fetch(url, {cache:'no-store'});
-    // bei Fehlern trotzdem versuchen, Text zu lesen
-    let text = '';
-    try{ text = await r.text(); }catch{}
-    let json;
-    try{ json = JSON.parse(text); }catch{ json = { error:`HTTP ${r.status}`, raw:text } }
-    return { ok:r.ok, status:r.status, data:json };
-  }
-
-  async function loadNow(){
-    setError('');
-    const setName = document.getElementById('sourceSet').value;
-    const url = `${WORKER_BASE}/api/now?set=${encodeURIComponent(setName)}`;
-    document.getElementById('btnReload').disabled = true;
-    const { ok, status, data } = await fetchJSON(url);
-    document.getElementById('btnReload').disabled = false;
-
-    renderCurl(setName);
-
-    if(!ok || data.error){
-      renderItems({items:[]});
-      renderDebug(data||{}, setName);
-      setError(`Fehler (${status}): ${data.error || 'Unbekannter Fehler'}`);
-      return;
-    }
-    renderItems(data);
-    renderDebug(data, setName);
-  }
-
-  async function runScan(){
-    const setName = document.getElementById('sourceSet').value;
-    const url = `${WORKER_BASE}/api/debug-scan?set=${encodeURIComponent(setName)}`;
-    scanArea.textContent = 'Scanne Quellen…';
-    scanTable.style.display = 'none';
-    scanBody.innerHTML = '';
-    const { data } = await fetchJSON(url);
-
-    if(data.error){
-      scanArea.innerHTML = `<div class="err">Scan-Fehler: ${data.error}</div>`;
-      return;
-    }
-    const list = data.results || data.sources || [];
-    if(!list.length){
-      scanArea.textContent = 'Keine Ergebnisse.';
-      return;
-    }
-    scanArea.textContent = `Zeit: ${fmtTime(data.ts || new Date().toISOString())} • ${list.length} Quellen geprüft`;
-    scanBody.innerHTML = list.map((r,i)=>`
-      <tr>
-        <td>${i+1}</td>
-        <td style="word-break:break-all">${r.url||'–'}</td>
-        <td class="${(+r.status>=200 && +r.status<300)?'ok':(+r.status>=500?'bad':'warn')}">${r.status||'–'}</td>
-        <td>${r.ct||'–'}</td>
-        <td>${r.len||'–'}</td>
-        <td style="word-break:break-all">${(r.bodySample||'').slice(0,120)}</td>
-      </tr>`).join('');
-    scanTable.style.display = '';
-  }
-
-  // === Events ===
-  document.getElementById('btnReload').addEventListener('click', loadNow);
-  document.getElementById('sourceSet').addEventListener('change', ()=>{ renderCurl(sourceSet.value); loadNow(); });
-  document.getElementById('btnCheckAll').addEventListener('click', runScan);
-  document.getElementById('btnToggleAuto').addEventListener('click', (e)=>{
-    if(autoTimer){
-      clearInterval(autoTimer); autoTimer=null;
-      e.target.textContent='Auto-Refresh: Aus';
-      e.target.classList.add('ghost');
-    }else{
-      autoTimer = setInterval(loadNow, AUTO_REFRESH_MS);
-      e.target.textContent='Auto-Refresh: An';
-      e.target.classList.remove('ghost');
-    }
-  });
-
-  // Initial
-  renderCurl('auto');
-  loadNow();
+// Initial: Live-Set
+loadNow({ set: "live" });
 </script>
 </body>
 </html>
