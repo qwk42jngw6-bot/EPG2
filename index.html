@@ -1,228 +1,271 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>TV Programm (EPG)</title>
-<style>
-  :root{
-    --bg:#0f1419; --panel:#1e293b; --panel2:#0b1220; --border:#334155;
-    --txt:#e2e8f0; --muted:#94a3b8; --accent:#60a5fa; --bad:#ef4444; --ok:#10b981;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.45;padding:16px}
-  .wrap{max-width:1400px;margin:0 auto}
-  .header{display:flex;gap:12px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px}
-  h1{font-size:20px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .toolbar button,.toolbar .pill{background:var(--panel);border:1px solid var(--border);color:var(--txt);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px}
-  .toolbar input{background:var(--panel2);border:1px solid var(--border);color:var(--txt);padding:8px;border-radius:8px;min-width:320px}
-  .toolbar button:hover{border-color:#475569}
-  .timestamp{color:var(--muted);font-size:12px}
-  .stats{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}
-  .stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
-  .stat .num{font-weight:700;font-size:18px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:8px}
-  .card{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px}
-  .card:hover{border-color:#475569;transform:translateY(-1px)}
-  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .name{font-weight:600}
-  .no{font-size:12px;color:#93c5fd;background:#1e40af;padding:4px 8px;border-radius:6px}
-  .live{position:absolute;top:10px;right:10px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;padding:4px 8px;border-radius:999px}
-  .title{font-size:14px;margin-bottom:4px}
-  .time{font-size:12px;color:var(--muted)}
-  .next{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
-  .next .item{display:flex;justify-content:space-between;color:var(--muted);font-size:12px;margin-bottom:4px}
-  .source-badge{margin-top:8px;font-size:10px;background:#374151;color:#9ca3af;padding:3px 8px;border-radius:6px;display:inline-block}
-  .error{background:#7f1d1d;color:#fca5a5;border:1px solid #dc2626;border-radius:8px;padding:12px;margin:8px 0}
-  .attempts{margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px}
-  .attempt{border-top:1px dashed var(--border);padding-top:8px;margin-top:8px}
-  .attempt:first-child{border-top:none;margin-top:0;padding-top:0}
-  .muted{color:var(--muted)}
-  .ok{color:var(--ok)}
-  .bad{color:var(--bad)}
-  .link{color:#93c5fd;text-decoration:none}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TV Programm</title>
+  <style>
+    :root{
+      --bg:#0f1419;
+      --card:#1b2430;
+      --text:#e6edf3;
+      --muted:#94a3b8;
+      --border:#2a3441;
+      --accent:#3b82f6;
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --err:#ef4444;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0; padding:16px;
+      background:var(--bg); color:var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      line-height:1.45;
+    }
+    .wrap{max-width:1200px;margin:0 auto;}
+    header{
+      display:flex;flex-wrap:wrap;gap:12px;
+      align-items:center;justify-content:space-between;
+      padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:16px;
+    }
+    h1{margin:0;font-size:20px;font-weight:700;}
+    .topline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+    .muted{color:var(--muted);font-size:13px;}
+    .btn, select{
+      background:#121821;border:1px solid var(--border);color:var(--text);
+      border-radius:8px;padding:8px 10px;font-size:14px;cursor:pointer;
+    }
+    .btn:hover{border-color:#3a495c}
+    .grid{
+      display:grid;gap:12px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    }
+    .card{
+      background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;
+    }
+    .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+    .ch-name{font-weight:700;font-size:15px;}
+    .ch-no{font-size:12px;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:2px 6px;min-width:28px;text-align:center;}
+    .prog-title{font-size:14px;margin-bottom:2px;}
+    .prog-time{color:var(--muted);font-size:12px;}
+    .nodata{color:var(--muted);font-size:13px;font-style:italic;}
+    .bar{
+      display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    }
+    .status{
+      font-size:12px;color:var(--muted);
+    }
+    .error{
+      background: #2a1517;
+      border:1px solid #522327;
+      color:#fca5a5;
+      padding:10px 12px;border-radius:8px;margin-bottom:12px;
+      font-size:14px;
+    }
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="header">
-    <div>
-      <h1>TV Programm</h1>
-      <div id="stamp" class="timestamp">–</div>
-    </div>
-    <div class="toolbar">
-      <button data-set="live">Live (xmltv.info + epg.pw)</button>
-      <button data-set="alt">Alt (gemischt)</button>
-      <button data-set="single">Single</button>
-      <span class="pill">API: <span id="apiLabel" class="muted"></span></span>
-      <button id="btn-debug">Debug</button>
-    </div>
-  </div>
-
-  <div class="toolbar" style="margin-bottom:10px">
-    <input id="adhoc" placeholder="Ad-hoc URL(s), mehrere mit Komma trennen – ENTER um zu laden"/>
-    <button id="btn-adhoc">Laden</button>
-    <span id="activeSet" class="muted"></span>
-  </div>
-
-  <div class="stats">
-    <div class="stat"><div class="num" id="statTotal">0</div><div class="muted">Kanäle</div></div>
-    <div class="stat"><div class="num" id="statLive">0</div><div class="muted">mit „Jetzt“</div></div>
-    <div class="stat"><div class="num" id="statAttempts">0</div><div class="muted">Fetch-Versuche</div></div>
-  </div>
-
-  <div id="errorBox"></div>
-  <div id="content" class="grid"></div>
-
-  <div id="attempts" class="attempts" style="display:block">
-    <div style="font-weight:600;margin-bottom:6px">Fetch-Versuche</div>
-    <div class="muted">Noch keine.</div>
-  </div>
-</div>
-
-<script>
-  // API-Autodetektion: ?api=… > window.EPG_API > Default
-  const API =
-    new URLSearchParams(location.search).get('api') ||
-    (window.EPG_API || 'https://waterfall-epg.w2gy9ymm7y.workers.dev');
-
-  document.getElementById('apiLabel').textContent = API;
-
-  let DEBUG_ON = true;
-
-  const $ = sel => document.querySelector(sel);
-  const stamp = $('#stamp');
-  const content = $('#content');
-  const errBox = $('#errorBox');
-  const attemptsBox = $('#attempts');
-  const activeSetLbl = $('#activeSet');
-  const statTotal = $('#statTotal');
-  const statLive = $('#statLive');
-  const statAttempts = $('#statAttempts');
-
-  // Buttons Set-Wechsel
-  document.querySelectorAll('button[data-set]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const set = btn.getAttribute('data-set');
-      loadNow({ set });
-    });
-  });
-
-  // Debug Toggle
-  $('#btn-debug').addEventListener('click', ()=>{
-    DEBUG_ON = !DEBUG_ON;
-    attemptsBox.style.display = DEBUG_ON ? 'block' : 'none';
-  });
-
-  // Ad-hoc URLs
-  $('#btn-adhoc').addEventListener('click', ()=>{
-    const val = $('#adhoc').value.trim();
-    if (!val) return;
-    loadNow({ url: val });
-  });
-  $('#adhoc').addEventListener('keydown', (e)=>{
-    if (e.key === 'Enter') $('#btn-adhoc').click();
-  });
-
-  // Helpers
-  function fmtTime(iso){
-    try{
-      const d=new Date(iso);
-      return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    }catch{ return '–'; }
-  }
-  function showError(title, msg){
-    errBox.innerHTML = `<div class="error"><strong>${title}</strong><br>${msg||''}</div>`;
-  }
-  function clearError(){ errBox.innerHTML = ''; }
-  function showAttempts(attempts=[]){
-    statAttempts.textContent = attempts.length;
-    if (!DEBUG_ON){ attemptsBox.innerHTML=''; return; }
-    if (!attempts.length){
-      attemptsBox.innerHTML = `<div style="font-weight:600;margin-bottom:6px">Fetch-Versuche</div><div class="muted">Keine.</div>`;
-      return;
-    }
-    attemptsBox.innerHTML = `
-      <div style="font-weight:600;margin-bottom:6px">Fetch-Versuche</div>
-      ${attempts.map((a,i)=>`
-        <div class="attempt">
-          <div><b>#${i+1}</b> <a class="link" href="${a.src||a.url||'#'}" target="_blank" rel="noopener">${a.src||a.url||''}</a></div>
-          <div>Status: <span class="${a.ok===false?'bad':'ok'}">${a.status}</span> · CT: ${a.ct||'-'} · Len: ${a.len||'-'}</div>
-          ${a.hint?`<div class="muted">Hinweis: ${a.hint}</div>`:''}
-          ${a.error?`<div class="muted">Error: ${a.error}</div>`:''}
+  <div class="wrap">
+    <header>
+      <h1>TV&nbsp;Programm</h1>
+      <div class="topline">
+        <span id="clock" class="muted">--:--</span>
+        <span id="updated" class="muted">Aktualisiert: —</span>
+        <div class="bar">
+          <!-- Optional: Quelle über URL ?set= -->
+          <button id="btnRefresh" class="btn">Aktualisieren</button>
         </div>
-      `).join('')}
-    `;
-  }
-  function renderItems(data){
-    const items = Array.isArray(data.items) ? data.items : [];
-    statTotal.textContent = items.length;
-    statLive.textContent = items.filter(it => it.now && it.now.title).length;
-    stamp.textContent = `Aktualisiert: ${new Date(data.ts).toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
-    activeSetLbl.textContent = data.sourceUsed ? `Quelle: ${data.sourceUsed}` : '';
-    content.innerHTML = items.map(ch=>{
-      const hasNow = ch.now && ch.now.title;
-      const srcBadge = data.sourceUsed
-        ? (data.sourceUsed.includes('xmltv.info') ? 'xmltv.info'
-          : data.sourceUsed.includes('epg.pw') ? 'epg.pw'
-          : data.sourceUsed.includes('fallback') ? 'Testdaten'
-          : 'Live')
-        : '';
-      return `
-        <div class="card">
-          ${hasNow?'<div class="live">LIVE</div>':''}
-          <div class="top">
-            <div class="name">${ch.channel}</div>
-            <div class="no">#${ch.no}</div>
-          </div>
-          <div>
-            ${hasNow?`
-              <div class="title">${ch.now.title}</div>
-              <div class="time">${fmtTime(ch.now.start)} – ${fmtTime(ch.now.stop)}</div>
-            `:`
-              <div class="title muted">Keine aktuelle Sendung</div>
-            `}
-          </div>
-          ${ch.next && ch.next.length?`
-            <div class="next">
-              ${ch.next.map(n=>`
-                <div class="item"><span>${n.title}</span><span>${fmtTime(n.start)}</span></div>
-              `).join('')}
+      </div>
+    </header>
+
+    <div id="errorBox" class="error" style="display:none;"></div>
+
+    <div id="stats" class="muted" style="margin-bottom:12px;"></div>
+
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    // -----------------------------
+    // Konfiguration
+    // -----------------------------
+    // Reihenfolge der Sender (deine 35 Kanäle, exakt so gerendert):
+    const CHANNEL_ORDER = [
+      "ARD (Das Erste)",
+      "ZDF",
+      "RTL",
+      "ProSieben",
+      "Sat.1",
+      "SWR",
+      "Sky Sport F1 (Formel 1)",
+      "Motorvision TV",
+      "Sky Cinema Highlights",
+      "Sky Cinema Action",
+      "Sky Cinema Primera",
+      "Sky Cinema Classic",
+      "Sky Cinema Family",
+      "Warner Bros. (Film & Serie)",
+      "VOX",
+      "RTL Zwei",
+      "Kabel Eins",
+      "Kabel Eins Doku",
+      "BBC Food",
+      "DMAX",
+      "BBC Top Gear",
+      "N24 Doku",
+      "Discovery Channel",
+      "Sky Documentaries",
+      "History Channel",
+      "Sky Nature",
+      "Terra Mater",
+      "National Geographic",
+      "National Geo Wild",
+      "Animal Planet",
+      "Welt",
+      "N-TV",
+      "Tagesschau24",
+      "Nick (Nickelodeon)",
+      "MTV"
+    ];
+
+    // API-Basis per URL-Parameter ?api=...
+    // Standard: dein Worker
+    const urlParams = new URLSearchParams(location.search);
+    const API_BASE = (urlParams.get("api") || "https://waterfall-epg.w2gy9ymm7y.workers.dev").replace(/\/+$/,"");
+    // Quelle/Set per URL-Parameter ?set=live|alt|single (Standard: live)
+    const SOURCE_SET = (urlParams.get("set") || "live").toLowerCase();
+
+    // -----------------------------
+    // Hilfsfunktionen
+    // -----------------------------
+    const fmtTime = (iso) => {
+      if(!iso) return "—";
+      const d = new Date(iso);
+      if(isNaN(d)) return "—";
+      return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
+    };
+    const fmtDateTime = (iso) => {
+      const d = new Date(iso);
+      if(isNaN(d)) return "—";
+      return d.toLocaleString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    };
+    const byLower = s => (s||"").toLowerCase();
+
+    function showError(msg){
+      const box = document.getElementById("errorBox");
+      box.textContent = msg;
+      box.style.display = "block";
+    }
+    function clearError(){
+      const box = document.getElementById("errorBox");
+      box.style.display = "none";
+      box.textContent = "";
+    }
+
+    // Mappe API-Items (array) in ein Dictionary nach Kanalname (lower)
+    function indexByChannel(items){
+      const map = new Map();
+      (items||[]).forEach(it => {
+        const key = byLower(it.channel);
+        if(!map.has(key)) map.set(key, it);
+      });
+      return map;
+    }
+
+    // Rendere die Karten in der festen Reihenfolge
+    function render(items, ts, attempts, sourceUsed){
+      const grid = document.getElementById("grid");
+      const map = indexByChannel(items);
+      let html = "";
+
+      let haveCount = 0;
+      CHANNEL_ORDER.forEach((name, idx) => {
+        const it = map.get(byLower(name));
+        if(it && it.now && it.now.title) haveCount++;
+
+        html += `
+          <div class="card">
+            <div class="row1">
+              <div class="ch-name">${name}</div>
+              <div class="ch-no">${idx+1}</div>
             </div>
-          `:''}
-          ${srcBadge?`<div class="source-badge">${srcBadge}</div>`:''}
-        </div>
-      `;
-    }).join('');
-  }
+            ${
+              it && it.now && it.now.title
+              ? `
+                <div class="prog-title">${escapeHtml(it.now.title)}</div>
+                <div class="prog-time">${fmtTime(it.now.start)} – ${fmtTime(it.now.stop)}</div>
+              `
+              : `<div class="nodata">Keine Daten verfügbar</div>`
+            }
+          </div>
+        `;
+      });
 
-  async function loadNow({ set='live', url=null }={}){
-    clearError();
-    content.innerHTML = `<div class="card"><div class="title">Lade TV-Programm...</div><div class="time muted">Bitte warten</div></div>`;
-    try{
-      const q = url ? (`url=${encodeURIComponent(url)}`) : (`set=${encodeURIComponent(set)}`);
-      const r = await fetch(`${API}/api/now?${q}`);
-      if (!r.ok){
-        showError('Ladefehler', `HTTP ${r.status}`);
-        return;
-      }
-      const data = await r.json();
-      renderItems(data);
-      showAttempts(Array.isArray(data.attempts)?data.attempts:[]);
-      if (data.sourceUsed && data.sourceUsed.startsWith('fallback')) {
-        showError('Hinweis', 'Es wurden Testdaten (Fallback) angezeigt, weil keine Quelle im Set gegriffen hat.');
-      }
-    }catch(e){
-      showError('Ladefehler', e.message || String(e));
+      grid.innerHTML = html;
+
+      // Kopfzeile updaten
+      document.getElementById("updated").textContent = "Aktualisiert: " + (ts ? fmtDateTime(ts) : "—");
+
+      // kleine Text-Stats
+      const stats = document.getElementById("stats");
+      stats.textContent = `${haveCount}/${CHANNEL_ORDER.length} Sender mit Programmdaten • Quelle: ${sourceUsed || "—"} • Set: ${SOURCE_SET}`;
     }
-  }
 
-  // Erster Start: live
-  loadNow({ set:'live' });
+    // HTML Escaping für Titel
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#39;");
+    }
 
-  // Auto-Refresh alle 5 Minuten
-  setInterval(()=>loadNow({ set:'live' }), 300000);
-</script>
+    // -----------------------------
+    // Laden
+    // -----------------------------
+    async function loadEPG(){
+      clearError();
+      // Endpunkt: /api/now (optional mit ?set=)
+      const url = `${API_BASE}/api/now${SOURCE_SET ? `?set=${encodeURIComponent(SOURCE_SET)}` : ""}`;
+      try{
+        const r = await fetch(url, {cache:"no-store"});
+        if(!r.ok){
+          showError(`Ladefehler (${r.status}) – ${r.statusText}`);
+          render([], null, [], null);
+          return;
+        }
+        const data = await r.json();
+
+        // Erwartete Struktur:
+        // { ts, sourceUsed, items: [{channel, now:{title,start,stop}, next:[...] }], attempts:[...] }
+        const items = Array.isArray(data.items) ? data.items : [];
+        render(items, data.ts, data.attempts || [], data.sourceUsed || "");
+
+      }catch(err){
+        showError(`NetworkError: ${err && err.message ? err.message : err}`);
+        render([], null, [], null);
+      }
+    }
+
+    // Uhr oben rechts
+    function tickClock(){
+      const el = document.getElementById("clock");
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    }
+
+    // -----------------------------
+    // Init
+    // -----------------------------
+    document.getElementById("btnRefresh").addEventListener("click", loadEPG);
+    tickClock();
+    setInterval(tickClock, 1000);
+    loadEPG();
+
+    // Auto-Refresh alle 5 Minuten
+    setInterval(loadEPG, 5*60*1000);
+  </script>
 </body>
 </html>
