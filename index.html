@@ -1,46 +1,46 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>TV Programm</title>
-  <style>
-    :root{
-      --bg:#0f1419; --card:#1e293b; --muted:#94a3b8; --line:#334155; --text:#e2e8f0;
-      --gold:#f5c518; --red:#dc2626; --green:#16a34a; --blue:#3b82f6;
-    }
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.45;padding:16px}
-    .container{max-width:1200px;margin:0 auto}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-    h1{font-size:20px;font-weight:700}
-    .controls{display:flex;gap:8px;flex-wrap:wrap}
-    button,select{
-      background:#0b1220;border:1px solid var(--line);color:var(--text);
-      padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px
-    }
-    button:hover,select:hover{border-color:#475569}
-    .timestamp{color:var(--muted);font-size:12px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-    .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-    .ch-name{font-weight:600}
-    .ch-no{font-size:12px;color:#60a5fa}
-    .now{margin:8px 0}
-    .title{font-size:14px}
-    .time{font-size:12px;color:var(--muted)}
-    .next .item{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
-    .badges{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-    .badge{font-size:10px;padding:3px 6px;border-radius:6px;text-decoration:none;display:inline-block}
-    .b-imdb{background:var(--gold);color:#000}
-    .b-rtu{background:var(--green);color:#fff}
-    .b-rtc{background:var(--red);color:#fff}
-    .b-score{background:var(--blue);color:#fff}
-    .error{background:#7f1d1d;border:1px solid var(--red);color:#fca5a5;padding:12px;border-radius:8px;margin:10px 0}
-    .source{margin-top:6px;color:var(--muted);font-size:10px}
-    .statusbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-    .pill{font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TV Programm</title>
+<style>
+  :root{
+    --bg:#0f1419; --card:#1e293b; --muted:#94a3b8; --line:#334155; --text:#e2e8f0;
+    --gold:#f5c518; --red:#dc2626; --green:#16a34a; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.45;padding:16px}
+  .container{max-width:1200px;margin:0 auto}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+  h1{font-size:20px;font-weight:700}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  button,select{
+    background:#0b1220;border:1px solid var(--line);color:var(--text);
+    padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px
+  }
+  button:hover,select:hover{border-color:#475569}
+  .timestamp{color:var(--muted);font-size:12px}
+  .statusbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .pill{font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .ch-name{font-weight:600}
+  .ch-no{font-size:12px;color:#60a5fa}
+  .now{margin:8px 0}
+  .title{font-size:14px}
+  .time{font-size:12px;color:var(--muted)}
+  .next .item{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+  .badges{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+  .badge{font-size:10px;padding:3px 6px;border-radius:6px;text-decoration:none;display:inline-block}
+  .b-imdb{background:var(--gold);color:#000}
+  .b-rtu{background:var(--green);color:#fff}
+  .b-rtc{background:var(--red);color:#fff}
+  .b-score{background:var(--blue);color:#fff}
+  .error{background:#7f1d1d;border:1px solid var(--red);color:#fca5a5;padding:12px;border-radius:8px;margin:10px 0}
+  .source{margin-top:6px;color:var(--muted);font-size:10px}
+</style>
 </head>
 <body>
 <div class="container">
@@ -50,10 +50,10 @@
       <div class="timestamp" id="ts">–</div>
     </div>
     <div class="controls">
-      <select id="sourceSet">
-        <option value="de">Quelle: DE (auto)</option>
-        <option value="single">Quelle: Single-Set</option>
-        <option value="alt">Quelle: Alternativ</option>
+      <select id="mode">
+        <option value="auto">Quelle: DE (Auto)</option>
+        <option value="xmltv">Quelle: xmltv.info</option>
+        <option value="epgpw">Quelle: epg.pw</option>
       </select>
       <button id="refresh">Aktualisieren</button>
       <button id="scan">Quellen prüfen</button>
@@ -66,13 +66,17 @@
 </div>
 
 <script>
-  // === DEINE WORKER-URL ANPASSEN ===
+  // === HIER DEINE WORKER-URL EINTRAGEN ===
   const WORKER = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
+
+  // feste URLs (müssen mit Worker übereinstimmen)
+  const XMLTV_INFO = "https://xmltv.info/de/epg.xml";
+  const EPG_PW     = "https://epg.pw/xmltv/epg_DE.xml";
 
   const MAX_NEXT = 2;
   const ratingCache = new Map(); // title -> { ratings, links }
 
-  const sourceSetEl = document.getElementById('sourceSet');
+  const modeEl = document.getElementById('mode');
   const grid = document.getElementById('grid');
   const ts = document.getElementById('ts');
   const errors = document.getElementById('errors');
@@ -80,7 +84,7 @@
 
   document.getElementById('refresh').addEventListener('click', loadNow);
   document.getElementById('scan').addEventListener('click', doScan);
-  sourceSetEl.addEventListener('change', loadNow);
+  modeEl.addEventListener('change', loadNow);
 
   loadNow();
 
@@ -89,8 +93,17 @@
     setStatus();
     grid.innerHTML = "<div class='pill'>Lade EPG…</div>";
     try{
-      const set = sourceSetEl.value;
-      const r = await fetch(`${WORKER}/api/now?set=${encodeURIComponent(set)}`);
+      const mode = modeEl.value;
+      let url = `${WORKER}/api/now`;
+      if (mode === "auto") {
+        url += `?set=de`;
+      } else if (mode === "xmltv") {
+        url += `?source=${encodeURIComponent(XMLTV_INFO)}`;
+      } else if (mode === "epgpw") {
+        url += `?source=${encodeURIComponent(EPG_PW)}`;
+      }
+
+      const r = await fetch(url);
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
       const data = await r.json();
 
@@ -100,6 +113,23 @@
     }catch(e){
       showError("Ladefehler", e.message || String(e));
       grid.innerHTML = "";
+    }
+  }
+
+  async function doScan(){
+    showError();
+    statusbar.innerHTML = "";
+    addPill("Scanne Quellen…");
+    try{
+      const r = await fetch(`${WORKER}/api/debug-scan?set=de`);
+      const data = await r.json();
+      statusbar.innerHTML = "";
+      addPill(`Treffer: ${data.results.filter(x=>x.status===200).length}`);
+      (data.results||[]).forEach(x => {
+        addPill(`${shortSource(x.url)}: ${x.status}`);
+      });
+    }catch(e){
+      showError("Scan-Fehler", e.message||String(e));
     }
   }
 
@@ -118,7 +148,6 @@
   }
   function addPill(t){ const s=document.createElement('span');s.className='pill';s.textContent=t;statusbar.appendChild(s); }
   function shortSource(u){
-    if(!u) return "";
     try{
       const p = new URL(u);
       return p.hostname.replace(/^www\./,'') + (p.pathname!=="/"?p.pathname:"");
@@ -184,9 +213,10 @@
     `;
   }
 
+  // --- FIX: Update per dataset.title (ohne CSS-Selector-Probleme)
   function collectAndFetchRatings(){
     const blocks = [...document.querySelectorAll('.badges[data-title]')];
-    const titles = [...new Set(blocks.map(b => b.getAttribute('data-title')).filter(Boolean))];
+    const titles = [...new Set(blocks.map(b => b.dataset.title).filter(Boolean))];
     const toFetch = titles.filter(t => !ratingCache.has(t));
     if (!toFetch.length) return;
 
@@ -196,24 +226,23 @@
           const r = await fetch(`${WORKER}/api/ratings?title=${encodeURIComponent(t)}`);
           if(!r.ok) throw new Error(`HTTP ${r.status}`);
           const data = await r.json();
-          if (data && data.ratings){
-            ratingCache.set(t, { ratings: data.ratings, links: data.links||{} });
-            document.querySelectorAll(`.badges[data-title="${cssSel(t)}"]`).forEach(node=>{
-              const R = data.ratings, L=data.links||{};
-              node.innerHTML = `
-                ${R.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(R.imdb)}</a>`:""}
-                ${R.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtUser}%</a>`:""}
-                ${R.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtCritic}%</a>`:""}
-                ${R.score!=null ? `<span class="badge b-score">Score ${num(R.score)}/10</span>`:""}
-              `;
-            });
-          } else {
-            ratingCache.set(t, {});
-          }
+          ratingCache.set(t, { ratings: data.ratings||{}, links: data.links||{} });
+
+          // alle passenden Blocks aktualisieren
+          document.querySelectorAll('.badges[data-title]').forEach(node=>{
+            if (node.dataset.title !== t) return;
+            const R = data.ratings||{}, L = data.links||{};
+            node.innerHTML = `
+              ${R.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(R.imdb)}</a>`:""}
+              ${R.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtUser}%</a>`:""}
+              ${R.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtCritic}%</a>`:""}
+              ${R.score!=null ? `<span class="badge b-score">Score ${num(R.score)}/10</span>`:""}
+            `;
+          });
         }catch(e){
-          ratingCache.set(t, {});
+          ratingCache.set(t, {}); // kein Crash, einfach leer lassen
         }
-        await sleep(250);
+        await sleep(200);
       }
     })();
   }
@@ -221,7 +250,6 @@
   // Helpers
   function esc(s){ return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function escAttr(s){ return esc(s); }
-  function cssSel(s){ return s.replace(/["\\]/g, "\\$&"); }
   function fmtTime(iso){ const d = new Date(iso); return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
   function fmtDateTime(iso){ const d = new Date(iso); return d.toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
   function showError(title, msg){
@@ -229,7 +257,6 @@
     errors.innerHTML = `<div class="error"><strong>${esc(title)}</strong><br>${msg ? esc(msg).replace(/\n/g,"<br>"):""}</div>`;
   }
   function num(n){ return (typeof n==="number") ? (Math.round(n*10)/10).toString() : n; }
-  function addPill(t){ const s=document.createElement('span');s.className='pill';s.textContent=t;statusbar.appendChild(s); }
   const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
 </script>
 </body>
