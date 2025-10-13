@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>TV Programm</title>
   <style>
     :root{
@@ -31,11 +31,11 @@
     .time{font-size:12px;color:var(--muted)}
     .next .item{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
     .badges{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-    .badge{font-size:10px;padding:3px 6px;border-radius:6px}
+    .badge{font-size:10px;padding:3px 6px;border-radius:6px;text-decoration:none;display:inline-block}
     .b-imdb{background:var(--gold);color:#000}
     .b-rtu{background:var(--green);color:#fff}
     .b-rtc{background:var(--red);color:#fff}
-    .b-gpt{background:var(--blue);color:#fff}
+    .b-score{background:var(--blue);color:#fff}
     .error{background:#7f1d1d;border:1px solid var(--red);color:#fca5a5;padding:12px;border-radius:8px;margin:10px 0}
     .source{margin-top:6px;color:var(--muted);font-size:10px}
     .statusbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
@@ -66,10 +66,11 @@
 </div>
 
 <script>
-  // === Konfiguration ===
-  const WORKER = "https://waterfall-epg.w2gy9ymm7y.workers.dev"; // <- dein Worker
-  const MAX_NEXT = 2; // nur die nächsten 2 anzeigen
-  const ratingCache = new Map(); // einfache Laufzeit-Cache pro Titel
+  // === DEINE WORKER-URL ANPASSEN ===
+  const WORKER = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
+
+  const MAX_NEXT = 2;
+  const ratingCache = new Map(); // title -> { ratings, links }
 
   const sourceSetEl = document.getElementById('sourceSet');
   const grid = document.getElementById('grid');
@@ -81,10 +82,10 @@
   document.getElementById('scan').addEventListener('click', doScan);
   sourceSetEl.addEventListener('change', loadNow);
 
-  loadNow(); // Initial
+  loadNow();
 
   async function loadNow(){
-    showError(); // clear
+    showError();
     setStatus();
     grid.innerHTML = "<div class='pill'>Lade EPG…</div>";
     try{
@@ -164,21 +165,21 @@
       `;
     }).join("");
     grid.innerHTML = html;
-    // Lazy Ratings laden (dedup)
     collectAndFetchRatings();
   }
 
   function ratingsBlock(title){
     const key = (title||"").trim();
     if(!key) return "";
-    const cached = ratingCache.get(key);
-    const imdb = cached?.imdb, rtu=cached?.rtUser, rtc=cached?.rtCritic, gpt=cached?.gpt;
+    const cached = ratingCache.get(key) || {};
+    const r = cached.ratings || {};
+    const L = cached.links || {};
     return `
       <div class="badges" data-title="${escAttr(key)}">
-        ${imdb!=null ? `<span class="badge b-imdb">IMDb ${num(imdb)}</span>`:""}
-        ${rtu!=null  ? `<span class="badge b-rtu">RT ${rtu}%</span>`:""}
-        ${rtc!=null  ? `<span class="badge b-rtc">RT ${rtc}%</span>`:""}
-        ${gpt!=null  ? `<span class="badge b-gpt">AI ${num(gpt)}/10</span>`:""}
+        ${r.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(r.imdb)}</a>`:""}
+        ${r.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${r.rtUser}%</a>`:""}
+        ${r.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${r.rtCritic}%</a>`:""}
+        ${r.score!=null ? `<span class="badge b-score">Score ${num(r.score)}/10</span>`:""}
       </div>
     `;
   }
@@ -186,12 +187,9 @@
   function collectAndFetchRatings(){
     const blocks = [...document.querySelectorAll('.badges[data-title]')];
     const titles = [...new Set(blocks.map(b => b.getAttribute('data-title')).filter(Boolean))];
-
-    // nur Titel ohne Cache anfragen
     const toFetch = titles.filter(t => !ratingCache.has(t));
     if (!toFetch.length) return;
 
-    // nacheinander (OMDb-Rate-Limit schonend)
     (async ()=>{
       for (const t of toFetch) {
         try{
@@ -199,43 +197,28 @@
           if(!r.ok) throw new Error(`HTTP ${r.status}`);
           const data = await r.json();
           if (data && data.ratings){
-            ratingCache.set(t, data.ratings);
-            // Update alle Blocks dieses Titels
+            ratingCache.set(t, { ratings: data.ratings, links: data.links||{} });
             document.querySelectorAll(`.badges[data-title="${cssSel(t)}"]`).forEach(node=>{
+              const R = data.ratings, L=data.links||{};
               node.innerHTML = `
-                ${data.ratings.imdb!=null ? `<span class="badge b-imdb">IMDb ${num(data.ratings.imdb)}</span>`:""}
-                ${data.ratings.rtUser!=null ? `<span class="badge b-rtu">RT ${data.ratings.rtUser}%</span>`:""}
-                ${data.ratings.rtCritic!=null ? `<span class="badge b-rtc">RT ${data.ratings.rtCritic}%</span>`:""}
-                ${data.ratings.gpt!=null ? `<span class="badge b-gpt">AI ${num(data.ratings.gpt)}/10</span>`:""}
+                ${R.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(R.imdb)}</a>`:""}
+                ${R.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtUser}%</a>`:""}
+                ${R.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtCritic}%</a>`:""}
+                ${R.score!=null ? `<span class="badge b-score">Score ${num(R.score)}/10</span>`:""}
               `;
             });
+          } else {
+            ratingCache.set(t, {});
           }
         }catch(e){
-          // still fine – einfach keine Badges
           ratingCache.set(t, {});
         }
-        await sleep(250); // kleine Pause
+        await sleep(250);
       }
     })();
   }
 
-  async function doScan(){
-    showError();
-    try{
-      const set = sourceSetEl.value;
-      const r = await fetch(`${WORKER}/api/debug-scan?set=${encodeURIComponent(set)}`);
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      const lines = (data.results||[]).map(o =>
-        `${o.i}. ${o.url}\n   → ${o.status} · ${o.ct||""} · ${o.len||""}\n   ${o.bodySample||""}`
-      ).join("\n\n");
-      showError("Debug Scan", lines || (data.note||"keine Ergebnisse"));
-    }catch(e){
-      showError("Scan-Fehler", e.message || String(e));
-    }
-  }
-
-  // === Helpers ===
+  // Helpers
   function esc(s){ return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
   function escAttr(s){ return esc(s); }
   function cssSel(s){ return s.replace(/["\\]/g, "\\$&"); }
@@ -246,6 +229,7 @@
     errors.innerHTML = `<div class="error"><strong>${esc(title)}</strong><br>${msg ? esc(msg).replace(/\n/g,"<br>"):""}</div>`;
   }
   function num(n){ return (typeof n==="number") ? (Math.round(n*10)/10).toString() : n; }
+  function addPill(t){ const s=document.createElement('span');s.className='pill';s.textContent=t;statusbar.appendChild(s); }
   const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
 </script>
 </body>
