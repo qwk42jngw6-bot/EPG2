@@ -36,6 +36,8 @@
     .time{color:var(--muted);font-size:12px;margin-top:2px}
     .next{border-top:1px solid var(--border);padding-top:8px;margin-top:8px}
     .next-item{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13px;margin:4px 0}
+    .next-item .n-title a{color:#cbd5e1;text-decoration:none}
+    .next-item .n-title a:hover{text-decoration:underline}
     .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
     .badge{font-size:11px;padding:2px 6px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent}
     .b-imdb{background:var(--gold);color:#000}
@@ -169,6 +171,10 @@
       const nowTitle = now?.title || "–";
       const gHref = gSearch(nowTitle);
 
+      // ✨ Änderung: auch die 2 "Nächste"-Titel sind verlinkt (Google-Suche)
+      const next1 = next[0];
+      const next2 = next[1];
+
       return `
         <div class="card" data-no="${item.no||999}">
           <div class="row">
@@ -182,18 +188,18 @@
           </div>
 
           <div class="next">
-            ${(next[0] ? `
+            ${next1 ? `
               <div class="next-item">
-                <span>${next[0].title}</span>
-                <span>${fmtTime(next[0].start)}</span>
+                <span class="n-title">${a(gSearch(next1.title), next1.title, "Google-Suche öffnen")}</span>
+                <span>${fmtTime(next1.start)}</span>
               </div>` : `<div class="next-item"><span>–</span><span>–</span></div>`
-            )}
-            ${(next[1] ? `
+            }
+            ${next2 ? `
               <div class="next-item">
-                <span>${next[1].title}</span>
-                <span>${fmtTime(next[1].start)}</span>
+                <span class="n-title">${a(gSearch(next2.title), next2.title, "Google-Suche öffnen")}</span>
+                <span>${fmtTime(next2.start)}</span>
               </div>` : `<div class="next-item"><span>–</span><span>–</span></div>`
-            )}
+            }
           </div>
 
           <div class="badges" data-title="${nowTitle}"></div>
@@ -205,7 +211,7 @@
     function renderNow(payload){
       lastNowPayload = payload;
       const items = Array.isArray(payload.items) ? payload.items.slice() : [];
-      // sort by channel number (sicherheitshalber)
+      // sort by channel number
       items.sort((a,b)=>(a.no??999)-(b.no??999));
 
       if(items.length===0){
@@ -223,7 +229,7 @@
       const dbg = { set: currentSet, sourceUsed: payload.sourceUsed, attempts: payload.attempts||[] };
       debugPre.textContent = JSON.stringify(dbg, null, 2);
 
-      // Ratings nachladen (nur für Cards mit Titel)
+      // Ratings nachladen (nur für aktuelle Sendung)
       document.querySelectorAll(".badges").forEach(async (box)=>{
         const title = box.dataset.title?.trim();
         if(!title || title==="–" || title==="(Fallback) Programm") return;
@@ -240,18 +246,18 @@
 
       if (typeof r.imdb === "number"){
         const label = `IMDb ${r.imdb.toFixed(1)}`;
-        const href = L.imdb || gSearch(`IMDb ${data.title}`);
-        parts.push(`<span class="badge b-imdb">${a(href, label, "IMDb öffnen")}</span>`);
+        const href = L.imdb || `https://www.google.com/search?q=${encodeURIComponent(`IMDb ${data.title}`)}`;
+        parts.push(`<span class="badge b-imdb"><a href="${href}" target="_blank" rel="noopener" title="IMDb öffnen">${label}</a></span>`);
       }
       if (typeof r.rtCritic === "number"){
         const label = `RT Kritiker ${r.rtCritic}%`;
-        const href = L.rt || gSearch(`Rotten Tomatoes ${data.title}`);
-        parts.push(`<span class="badge b-rtc">${a(href, label, "Rotten Tomatoes öffnen")}</span>`);
+        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
+        parts.push(`<span class="badge b-rtc"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
       }
       if (typeof r.rtUser === "number"){
         const label = `RT User ${r.rtUser}%`;
-        const href = L.rt || gSearch(`Rotten Tomatoes ${data.title}`);
-        parts.push(`<span class="badge b-rtu">${a(href, label, "Rotten Tomatoes öffnen")}</span>`);
+        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
+        parts.push(`<span class="badge b-rtu"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
       }
       if (typeof r.score === "number"){
         const label = `Score ${r.score.toFixed(1)}/10`;
