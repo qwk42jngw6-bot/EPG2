@@ -1,45 +1,40 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TV Programm</title>
 <style>
   :root{
-    --bg:#0f1419; --card:#1e293b; --muted:#94a3b8; --line:#334155; --text:#e2e8f0;
-    --gold:#f5c518; --red:#dc2626; --green:#16a34a; --blue:#3b82f6;
+    --bg:#0f1419; --card:#1e293b; --muted:#94a3b8; --border:#334155;
+    --accent:#60a5fa; --gold:#f5c518; --rt-user:#16a34a; --rt-critic:#dc2626; --score:#3b82f6; --text:#e2e8f0;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial,sans-serif;line-height:1.45;padding:16px}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;line-height:1.4;padding:16px}
   .container{max-width:1200px;margin:0 auto}
-  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
-  h1{font-size:20px;font-weight:700}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+  h1{font-size:20px}
   .controls{display:flex;gap:8px;flex-wrap:wrap}
-  button,select{
-    background:#0b1220;border:1px solid var(--line);color:var(--text);
-    padding:8px 10px;border-radius:8px;cursor:pointer;font-size:14px
-  }
-  button:hover,select:hover{border-color:#475569}
-  .timestamp{color:var(--muted);font-size:12px}
-  .statusbar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-  .pill{font-size:12px;padding:4px 8px;border:1px solid var(--line);border-radius:999px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
-  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .ch-name{font-weight:600}
-  .ch-no{font-size:12px;color:#60a5fa}
-  .now{margin:8px 0}
-  .title{font-size:14px}
+  .btn{background:var(--card);border:1px solid var(--border);padding:8px 10px;border-radius:8px;color:var(--text);cursor:pointer;font-size:13px}
+  .btn.active{outline:2px solid var(--accent)}
+  .ts{color:var(--muted);font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .chan{font-weight:700}
+  .no{background:#1e40af;color:#fff;border-radius:6px;padding:2px 8px;font-size:12px}
+  .title{font-size:14px;margin:4px 0}
   .time{font-size:12px;color:var(--muted)}
-  .next .item{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
-  .badges{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
-  .badge{font-size:10px;padding:3px 6px;border-radius:6px;text-decoration:none;display:inline-block}
+  .next{border-top:1px solid var(--border);margin-top:8px;padding-top:8px}
+  .next-item{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin:4px 0}
+  .badges{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font-size:11px;padding:3px 6px;border-radius:4px;border:1px solid var(--border);text-decoration:none}
   .b-imdb{background:var(--gold);color:#000}
-  .b-rtu{background:var(--green);color:#fff}
-  .b-rtc{background:var(--red);color:#fff}
-  .b-score{background:var(--blue);color:#fff}
-  .error{background:#7f1d1d;border:1px solid var(--red);color:#fca5a5;padding:12px;border-radius:8px;margin:10px 0}
-  .source{margin-top:6px;color:var(--muted);font-size:10px}
+  .b-rtu{background:var(--rt-user);color:#fff}
+  .b-rtc{background:var(--rt-critic);color:#fff}
+  .b-score{background:var(--score);color:#fff}
+  .status{margin:8px 0;color:var(--muted);font-size:12px}
+  .err{background:#7f1d1d;border:1px solid #dc2626;color:#fca5a5;padding:10px;border-radius:8px;margin-bottom:10px}
 </style>
 </head>
 <body>
@@ -47,217 +42,185 @@
   <header>
     <div>
       <h1>TV Programm</h1>
-      <div class="timestamp" id="ts">–</div>
+      <div id="ts" class="ts">–</div>
     </div>
     <div class="controls">
-      <select id="mode">
-        <option value="auto">Quelle: DE (Auto)</option>
-        <option value="xmltv">Quelle: xmltv.info</option>
-        <option value="epgpw">Quelle: epg.pw</option>
-      </select>
-      <button id="refresh">Aktualisieren</button>
-      <button id="scan">Quellen prüfen</button>
+      <button class="btn" data-src="auto">Quelle: Auto</button>
+      <button class="btn" data-src="xmltv">Quelle: xmltv.info</button>
+      <button class="btn" data-src="epgpw">Quelle: epg.pw</button>
+      <button class="btn" id="refresh">Aktualisieren</button>
     </div>
   </header>
 
-  <div id="status" class="statusbar"></div>
-  <div id="errors"></div>
+  <div id="status" class="status"></div>
+  <div id="error"></div>
   <div id="grid" class="grid"></div>
 </div>
 
 <script>
-  // === HIER DEINE WORKER-URL EINTRAGEN ===
+  // <<< HIER DEINE WORKER-URL EINTRAGEN >>>
   const WORKER = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
 
-  // feste URLs (müssen mit Worker übereinstimmen)
-  const XMLTV_INFO = "https://xmltv.info/de/epg.xml";
-  const EPG_PW     = "https://epg.pw/xmltv/epg_DE.xml";
+  // UI state
+  let currentSource = localStorage.getItem("epg_source") || "auto";
 
-  const MAX_NEXT = 2;
-  const ratingCache = new Map(); // title -> { ratings, links }
+  // Button init
+  document.querySelectorAll(".btn[data-src]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      currentSource = b.dataset.src;
+      localStorage.setItem("epg_source", currentSource);
+      highlight();
+      load();
+    });
+  });
+  document.getElementById("refresh").addEventListener("click", load);
+  function highlight(){
+    document.querySelectorAll(".btn[data-src]").forEach(b=>{
+      b.classList.toggle("active", b.dataset.src===currentSource);
+    });
+  }
+  highlight();
 
-  const modeEl = document.getElementById('mode');
-  const grid = document.getElementById('grid');
-  const ts = document.getElementById('ts');
-  const errors = document.getElementById('errors');
-  const statusbar = document.getElementById('status');
+  // Cache für Ratings
+  const ratingCache = new Map();
+  const persisted = JSON.parse(sessionStorage.getItem('ratingsCache')||'{}');
+  for (const k of Object.keys(persisted)) ratingCache.set(k, persisted[k]);
+  function saveCache(){
+    const obj={}; for (const [k,v] of ratingCache.entries()) obj[k]=v;
+    sessionStorage.setItem('ratingsCache', JSON.stringify(obj));
+  }
+  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+  const esc = (s)=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;").replace(/>/g,"&gt;");
 
-  document.getElementById('refresh').addEventListener('click', loadNow);
-  document.getElementById('scan').addEventListener('click', doScan);
-  modeEl.addEventListener('change', loadNow);
-
-  loadNow();
-
-  async function loadNow(){
-    showError();
-    setStatus();
-    grid.innerHTML = "<div class='pill'>Lade EPG…</div>";
+  async function load(){
+    setStatus("Lade…");
+    setError("");
     try{
-      const mode = modeEl.value;
-      let url = `${WORKER}/api/now`;
-      if (mode === "auto") {
-        url += `?set=de`;
-      } else if (mode === "xmltv") {
-        url += `?source=${encodeURIComponent(XMLTV_INFO)}`;
-      } else if (mode === "epgpw") {
-        url += `?source=${encodeURIComponent(EPG_PW)}`;
-      }
-
-      const r = await fetch(url);
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const r = await fetch(`${WORKER}/api/now?source=${encodeURIComponent(currentSource)}`);
       const data = await r.json();
+      document.getElementById("ts").textContent = `Aktualisiert: ${fmtTs(data.ts)} | Quelle: ${data.sourceUsed || '–'}`;
+      render(data.items||[]);
+      setStatus(renderAttempts(data.attempts||[]));
 
-      ts.textContent = data.ts ? fmtDateTime(data.ts) : "–";
-      setStatus(data);
-      renderGrid(data.items||[], data.sourceUsed||"");
+      // Ratings einsammeln
+      await collectAndFetchRatings();
     }catch(e){
-      showError("Ladefehler", e.message || String(e));
-      grid.innerHTML = "";
+      setError("Ladefehler: " + esc(e.message||e));
+      setStatus("");
     }
   }
 
-  async function doScan(){
-    showError();
-    statusbar.innerHTML = "";
-    addPill("Scanne Quellen…");
-    try{
-      const r = await fetch(`${WORKER}/api/debug-scan?set=de`);
-      const data = await r.json();
-      statusbar.innerHTML = "";
-      addPill(`Treffer: ${data.results.filter(x=>x.status===200).length}`);
-      (data.results||[]).forEach(x => {
-        addPill(`${shortSource(x.url)}: ${x.status}`);
-      });
-    }catch(e){
-      showError("Scan-Fehler", e.message||String(e));
-    }
-  }
-
-  function setStatus(data){
-    statusbar.innerHTML = "";
-    if(!data) return;
-    if (data.sourceUsed){
-      addPill(`Quelle: ${shortSource(data.sourceUsed)}`);
-    }
-    if (Array.isArray(data.attempts)){
-      const ok = data.attempts.find(a => a.ok);
-      const bad = data.attempts.filter(a => a.ok===false);
-      if (ok) addPill("OK: 1");
-      if (bad.length) addPill(`Fehler: ${bad.length}`);
-    }
-  }
-  function addPill(t){ const s=document.createElement('span');s.className='pill';s.textContent=t;statusbar.appendChild(s); }
-  function shortSource(u){
-    try{
-      const p = new URL(u);
-      return p.hostname.replace(/^www\./,'') + (p.pathname!=="/"?p.pathname:"");
-    }catch{ return u; }
-  }
-
-  function renderGrid(items, sourceUsed){
-    if(!items || !items.length){
-      grid.innerHTML = "<div class='error'>Keine Senderdaten</div>";
+  function render(items){
+    const grid = document.getElementById("grid");
+    if (!items || !items.length){
+      grid.innerHTML = `<div class="err">Keine Senderdaten verfügbar.</div>`;
       return;
     }
-    const html = items.map(ch => {
-      const now = ch.now ? `
-        <div class="now">
-          <div class="title">${esc(ch.now.title)}</div>
-          <div class="time">${fmtTime(ch.now.start)} – ${fmtTime(ch.now.stop)}</div>
-          ${ratingsBlock(ch.now.title)}
-        </div>
-      ` : `<div class="now"><div class="time">Aktuell: –</div></div>`;
-
-      const nextArr = (ch.next||[]).slice(0, MAX_NEXT);
-      const next = nextArr.length ? `
-        <div class="next">
-          ${nextArr.map(n => `
-            <div class="item">
-              <span>${esc(n.title)}</span>
-              <span>${fmtTime(n.start)}</span>
-            </div>
-            ${ratingsBlock(n.title)}
-          `).join("")}
-        </div>
-      ` : "";
-
+    grid.innerHTML = items.map(row=>{
+      const now=row.now;
+      const next=row.next||[];
+      // Titel für Ratings bestimmen (aktuelle Sendung)
+      const rateKey = now?.title ? now.title : (next[0]?.title || "");
       return `
         <div class="card">
-          <div class="head">
-            <div class="ch-name">${esc(ch.channel)}</div>
-            <div class="ch-no">#${ch.no}</div>
+          <div class="row">
+            <div class="chan">${esc(row.channel)}</div>
+            <div class="no">${row.no}</div>
           </div>
-          ${now}
-          ${next}
-          <div class="source">${esc(shortSource(sourceUsed))}</div>
+          <div class="title">${now?esc(now.title):"<i>Keine aktuelle Sendung</i>"}</div>
+          <div class="time">${now? timeRange(now.start, now.stop) : ""}</div>
+
+          ${next.length?`
+            <div class="next">
+              ${next.map(n=>`<div class="next-item"><span>${esc(n.title)}</span><span>${timeOnly(n.start)}</span></div>`).join("")}
+            </div>
+          `:""}
+
+          <div class="badges" data-title="${esc(rateKey)}"></div>
         </div>
       `;
     }).join("");
-    grid.innerHTML = html;
-    collectAndFetchRatings();
   }
 
-  function ratingsBlock(title){
-    const key = (title||"").trim();
-    if(!key) return "";
-    const cached = ratingCache.get(key) || {};
-    const r = cached.ratings || {};
-    const L = cached.links || {};
-    return `
-      <div class="badges" data-title="${escAttr(key)}">
-        ${r.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(r.imdb)}</a>`:""}
-        ${r.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${r.rtUser}%</a>`:""}
-        ${r.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${r.rtCritic}%</a>`:""}
-        ${r.score!=null ? `<span class="badge b-score">Score ${num(r.score)}/10</span>`:""}
-      </div>
-    `;
+  function timeOnly(iso){
+    const d=new Date(iso);
+    return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+  }
+  function timeRange(a,b){
+    const da=new Date(a), db=new Date(b);
+    return `${da.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} – ${db.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`;
+  }
+  function fmtTs(iso){
+    const d=new Date(iso);
+    return d.toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
+  function setStatus(t){ document.getElementById("status").textContent=t||""; }
+  function setError(html){ document.getElementById("error").innerHTML = html?`<div class="err">${html}</div>`:""; }
+  function renderAttempts(atts){
+    if (!atts || !atts.length) return "";
+    return "Versuche: " + atts.map(a=>{
+      const s = a.ok? "OK" : (a.status||a.error||"ERR");
+      return `[${s}]`;
+    }).join(" ");
   }
 
-  // --- FIX: Update per dataset.title (ohne CSS-Selector-Probleme)
-  function collectAndFetchRatings(){
+  // Ratings mit Limit (3 parallel) + Session-Cache
+  const R_CONC = 3;
+  async function collectAndFetchRatings(){
     const blocks = [...document.querySelectorAll('.badges[data-title]')];
     const titles = [...new Set(blocks.map(b => b.dataset.title).filter(Boolean))];
-    const toFetch = titles.filter(t => !ratingCache.has(t));
-    if (!toFetch.length) return;
 
-    (async ()=>{
-      for (const t of toFetch) {
-        try{
+    // vorhandene aus Cache sofort rendern
+    for (const t of titles) {
+      const cached = ratingCache.get(t);
+      if (cached) updateBadgeDom(t, cached);
+    }
+
+    const queue = titles.filter(t => t && !ratingCache.has(t));
+    if (!queue.length) return;
+
+    let idx = 0;
+    const workers = Array.from({length: Math.min(R_CONC, queue.length)}, ()=>runner());
+
+    async function runner(){
+      while (idx < queue.length) {
+        const t = queue[idx++];
+        try {
           const r = await fetch(`${WORKER}/api/ratings?title=${encodeURIComponent(t)}`);
-          if(!r.ok) throw new Error(`HTTP ${r.status}`);
-          const data = await r.json();
-          ratingCache.set(t, { ratings: data.ratings||{}, links: data.links||{} });
-
-          // alle passenden Blocks aktualisieren
-          document.querySelectorAll('.badges[data-title]').forEach(node=>{
-            if (node.dataset.title !== t) return;
-            const R = data.ratings||{}, L = data.links||{};
-            node.innerHTML = `
-              ${R.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${escAttr(L.imdb)}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${num(R.imdb)}</a>`:""}
-              ${R.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtUser}%</a>`:""}
-              ${R.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${escAttr(L.rt)}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtCritic}%</a>`:""}
-              ${R.score!=null ? `<span class="badge b-score">Score ${num(R.score)}/10</span>`:""}
-            `;
-          });
-        }catch(e){
-          ratingCache.set(t, {}); // kein Crash, einfach leer lassen
+          if (r.ok) {
+            const data = await r.json();
+            const pack = { ratings: data.ratings||{}, links: data.links||{} };
+            ratingCache.set(t, pack);
+            updateBadgeDom(t, pack);
+          } else {
+            ratingCache.set(t, {}); // leer
+          }
+        } catch {
+          ratingCache.set(t, {});
         }
-        await sleep(200);
+        saveCache();
+        await sleep(150);
       }
-    })();
+    }
+
+    function updateBadgeDom(titleKey, pack){
+      document.querySelectorAll(`.badges[data-title]`).forEach(node=>{
+        if (node.dataset.title !== titleKey) return;
+        const R = pack.ratings||{}, L = pack.links||{};
+        node.innerHTML = `
+          ${R.imdb!=null ? `<a class="badge b-imdb" ${L.imdb?`href="${L.imdb}" target="_blank" rel="noopener noreferrer"`:""}>IMDb ${Number(R.imdb).toFixed(1)}</a>`:""}
+          ${R.rtUser!=null ? `<a class="badge b-rtu" ${L.rt?`href="${L.rt}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtUser}%</a>`:""}
+          ${R.rtCritic!=null ? `<a class="badge b-rtc" ${L.rt?`href="${L.rt}" target="_blank" rel="noopener noreferrer"`:""}>RT ${R.rtCritic}%</a>`:""}
+          ${R.score!=null ? `<span class="badge b-score">Score ${Number(R.score).toFixed(1)}/10</span>`:""}
+        `;
+      });
+    }
   }
 
-  // Helpers
-  function esc(s){ return (s||"").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-  function escAttr(s){ return esc(s); }
-  function fmtTime(iso){ const d = new Date(iso); return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
-  function fmtDateTime(iso){ const d = new Date(iso); return d.toLocaleString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
-  function showError(title, msg){
-    if(!title){ errors.innerHTML=""; return; }
-    errors.innerHTML = `<div class="error"><strong>${esc(title)}</strong><br>${msg ? esc(msg).replace(/\n/g,"<br>"):""}</div>`;
-  }
-  function num(n){ return (typeof n==="number") ? (Math.round(n*10)/10).toString() : n; }
-  const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+  // Start
+  load();
+  // Auto-Refresh alle 5 Minuten
+  setInterval(load, 300000);
 </script>
 </body>
 </html>
