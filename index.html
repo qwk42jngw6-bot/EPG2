@@ -2,10 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1"
-  />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
   <title>TV Programm</title>
   <style>
     :root{
@@ -39,6 +36,7 @@
     .next-item .n-title a{color:#cbd5e1;text-decoration:none}
     .next-item .n-title a:hover{text-decoration:underline}
     .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+    .badges.small .badge{font-size:10px;padding:2px 6px}
     .badge{font-size:11px;padding:2px 6px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent}
     .b-imdb{background:var(--gold);color:#000}
     .b-rtc{background:var(--rt-red);color:#fff}
@@ -104,7 +102,6 @@
     const debugToggle = document.getElementById("debugToggle");
 
     let currentSet = "auto";
-    let lastNowPayload = null;
 
     // ====== Clock ======
     function tickClock(){
@@ -135,20 +132,49 @@
         document.querySelectorAll(".btn[data-set]").forEach(b=>b.classList.remove("active"));
         btn.classList.add("active");
         currentSet = btn.dataset.set;
-        loadNow(); // reload with new set
+        loadNow();
       });
     });
-    // default active = Auto
     document.querySelector('.btn[data-set="auto"]').classList.add("active");
-
     reloadBtn.addEventListener("click", loadNow);
     debugToggle.addEventListener("click", ()=>{
       const visible = debugBox.style.display !== "none";
       debugBox.style.display = visible ? "none" : "block";
     });
 
-    // ====== Ratings cache to avoid flooding ======
+    // ====== Ratings cache + request pool (für „Jetzt“ + „Nächste“) ======
     const ratingsCache = new Map();
+    const queue = [];
+    let running = 0;
+    const MAX_CONCURRENCY = 6;
+
+    function scheduleRating(title, boxEl){
+      if(!title || title==="–" || title==="/") return;
+      const key = title.toLowerCase();
+      if (ratingsCache.has(key)) {
+        const data = ratingsCache.get(key);
+        if (data && !data.error) boxEl.innerHTML = buildBadgesHTML(data, /*small*/boxEl.classList.contains('small'));
+        return;
+      }
+      queue.push({title, boxEl});
+      pumpQueue();
+    }
+
+    async function pumpQueue(){
+      while (running < MAX_CONCURRENCY && queue.length){
+        const job = queue.shift();
+        running++;
+        fetchRatings(job.title)
+          .then(data=>{
+            if (data && !data.error) {
+              job.boxEl.innerHTML = buildBadgesHTML(data, job.boxEl.classList.contains('small'));
+            }
+          })
+          .catch(()=>{})
+          .finally(()=>{ running--; pumpQueue(); });
+      }
+    }
+
     async function fetchRatings(title){
       const key = title.toLowerCase();
       if (ratingsCache.has(key)) return ratingsCache.get(key);
@@ -159,19 +185,46 @@
         ratingsCache.set(key, data);
         return data;
       }catch(e){
-        ratingsCache.set(key, { error: e.message });
-        return { error: e.message };
+        const err = { error: e.message };
+        ratingsCache.set(key, err);
+        return err;
       }
     }
 
-    // ====== Build one card ======
+    function buildBadgesHTML(data, small=false){
+      if (!data || data.error) return "";
+      const r = data.ratings || {};
+      const L = data.links || {};
+      const parts = [];
+
+      if (typeof r.imdb === "number"){
+        const label = `IMDb ${r.imdb.toFixed(1)}`;
+        const href = L.imdb || `https://www.google.com/search?q=${encodeURIComponent(`IMDb ${data.title}`)}`;
+        parts.push(`<span class="badge b-imdb${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="IMDb öffnen">${label}</a></span>`);
+      }
+      if (typeof r.rtCritic === "number"){
+        const label = `RT Kritiker ${r.rtCritic}%`;
+        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
+        parts.push(`<span class="badge b-rtc${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
+      }
+      if (typeof r.rtUser === "number"){
+        const label = `RT User ${r.rtUser}%`;
+        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
+        parts.push(`<span class="badge b-rtu${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
+      }
+      if (typeof r.score === "number"){
+        const label = `Score ${r.score.toFixed(1)}/10`;
+        parts.push(`<span class="badge b-score${small?'':''}">${label}</span>`);
+      }
+      return parts.join("");
+    }
+
+    // ====== Build one card (JETZT + NÄCHSTE inkl. badges) ======
     function cardHTML(item){
       const now = item.now;
       const next = Array.isArray(item.next) ? item.next : [];
       const nowTitle = now?.title || "–";
-      const gHref = gSearch(nowTitle);
 
-      // ✨ Änderung: auch die 2 "Nächste"-Titel sind verlinkt (Google-Suche)
       const next1 = next[0];
       const next2 = next[1];
 
@@ -183,8 +236,9 @@
           </div>
 
           <div class="now">
-            <div class="title">${a(gHref, nowTitle, "Google-Suche öffnen")}</div>
+            <div class="title">${a(gSearch(nowTitle), nowTitle, "Google-Suche öffnen")}</div>
             ${now ? `<div class="time">${fmtTime(now.start)} – ${fmtTime(now.stop)}</div>` : `<div class="time">Keine aktuelle Sendung</div>`}
+            <div class="badges" data-title="${nowTitle}"></div>
           </div>
 
           <div class="next">
@@ -192,26 +246,25 @@
               <div class="next-item">
                 <span class="n-title">${a(gSearch(next1.title), next1.title, "Google-Suche öffnen")}</span>
                 <span>${fmtTime(next1.start)}</span>
-              </div>` : `<div class="next-item"><span>–</span><span>–</span></div>`
-            }
+              </div>
+              <div class="badges small" data-title="${next1.title}"></div>
+            ` : `<div class="next-item"><span>–</span><span>–</span></div>`}
+
             ${next2 ? `
               <div class="next-item">
                 <span class="n-title">${a(gSearch(next2.title), next2.title, "Google-Suche öffnen")}</span>
                 <span>${fmtTime(next2.start)}</span>
-              </div>` : `<div class="next-item"><span>–</span><span>–</span></div>`
-            }
+              </div>
+              <div class="badges small" data-title="${next2.title}"></div>
+            ` : `<div class="next-item"><span>–</span><span>–</span></div>`}
           </div>
-
-          <div class="badges" data-title="${nowTitle}"></div>
         </div>
       `;
     }
 
     // ====== Render all ======
     function renderNow(payload){
-      lastNowPayload = payload;
       const items = Array.isArray(payload.items) ? payload.items.slice() : [];
-      // sort by channel number
       items.sort((a,b)=>(a.no??999)-(b.no??999));
 
       if(items.length===0){
@@ -221,49 +274,17 @@
 
       contentEl.innerHTML = items.map(cardHTML).join("");
 
-      // Footer
+      // Footer & Debug
       srcUsedEl.textContent = payload.sourceUsed || "–";
       tsEl.textContent = payload.ts ? new Date(payload.ts).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "–";
-
-      // Debug
       const dbg = { set: currentSet, sourceUsed: payload.sourceUsed, attempts: payload.attempts||[] };
       debugPre.textContent = JSON.stringify(dbg, null, 2);
 
-      // Ratings nachladen (nur für aktuelle Sendung)
-      document.querySelectorAll(".badges").forEach(async (box)=>{
-        const title = box.dataset.title?.trim();
-        if(!title || title==="–" || title==="(Fallback) Programm") return;
-        const data = await fetchRatings(title);
-        box.innerHTML = buildBadgesHTML(data);
+      // Ratings für alle badges (Jetzt + Nächste) — dedupliziert + gepoolt
+      document.querySelectorAll(".badges[data-title]").forEach((box)=>{
+        const title = box.getAttribute("data-title")?.trim();
+        scheduleRating(title, box);
       });
-    }
-
-    function buildBadgesHTML(data){
-      if (!data || data.error) return "";
-      const r = data.ratings || {};
-      const L = data.links || {};
-      const parts = [];
-
-      if (typeof r.imdb === "number"){
-        const label = `IMDb ${r.imdb.toFixed(1)}`;
-        const href = L.imdb || `https://www.google.com/search?q=${encodeURIComponent(`IMDb ${data.title}`)}`;
-        parts.push(`<span class="badge b-imdb"><a href="${href}" target="_blank" rel="noopener" title="IMDb öffnen">${label}</a></span>`);
-      }
-      if (typeof r.rtCritic === "number"){
-        const label = `RT Kritiker ${r.rtCritic}%`;
-        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
-        parts.push(`<span class="badge b-rtc"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
-      }
-      if (typeof r.rtUser === "number"){
-        const label = `RT User ${r.rtUser}%`;
-        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
-        parts.push(`<span class="badge b-rtu"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
-      }
-      if (typeof r.score === "number"){
-        const label = `Score ${r.score.toFixed(1)}/10`;
-        parts.push(`<span class="badge b-score">${label}</span>`);
-      }
-      return parts.join("");
     }
 
     // ====== Load NOW ======
