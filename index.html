@@ -1,162 +1,259 @@
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TV Programm</title>
-<style>
-  :root{
-    --bg:#0f1419; --card:#1e293b; --border:#334155; --muted:#94a3b8; --text:#e2e8f0;
-    --gold:#f5c518; --red:#dc2626; --green:#16a34a; --blue:#3b82f6;
-  }
-  *{box-sizing:border-box}
-  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0;padding:16px}
-  .wrap{max-width:1200px;margin:0 auto}
-  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
-  h1{font-size:20px;margin:0}
-  .controls{display:flex;gap:8px;flex-wrap:wrap}
-  select,button{background:#111827;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer}
-  button:hover,select:hover{border-color:#475569}
-  .stamp{color:var(--muted);font-size:12px}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
-  .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-  .chname{font-weight:700}
-  .no{font-size:12px;color:#60a5fa;background:#1e40af;padding:2px 8px;border-radius:999px}
-  .slot{margin:8px 0;padding:8px;border:1px dashed var(--border);border-radius:8px}
-  .title{font-weight:600;cursor:pointer;text-decoration:none;color:var(--text)}
-  .time{font-size:12px;color:var(--muted);margin-top:2px}
-  .badges{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
-  .badge{font-size:11px;padding:2px 6px;border-radius:6px;display:inline-flex;gap:6px;align-items:center}
-  .imdb{background:var(--gold);color:#000}
-  .rtc{background:var(--red);color:#fff}
-  .rtu{background:var(--green);color:#fff}
-  .score{background:var(--blue);color:#fff}
-  .muted{opacity:.65}
-  .err{background:#7f1d1d;color:#fca5a5;border:1px solid var(--red);padding:10px;border-radius:8px;margin-bottom:12px}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>TV Programm</h1>
-      <div class="stamp" id="stamp">–</div>
-    </div>
-    <div class="controls">
-      <select id="source">
-        <option value="auto">Quelle: Auto</option>
-        <option value="xmltv">Quelle: xmltv.info</option>
-        <option value="epgpw">Quelle: epg.pw</option>
-      </select>
-      <button id="reload">Neu laden</button>
-      <button id="probe">Quellen testen</button>
-    </div>
-  </header>
+Backend
 
-  <div id="error"></div>
-  <div id="grid" class="grid"></div>
-</div>
+export default {
+  async fetch(req) {
+    try {
+      const url = new URL(req.url);
+      if (req.method === "OPTIONS") return new Response(null, { headers: cors() });
 
-<script>
-const API = "https://waterfall-epg.w2gy9ymm7y.workers.dev"; // <--- DEIN WORKER-URL
+      if (url.pathname === "/api/health")
+        return J({ ok: true, ts: new Date().toISOString() });
 
-document.getElementById("reload").onclick = load;
-document.getElementById("probe").onclick = probe;
-document.getElementById("source").onchange = load;
+      if (url.pathname === "/api/now")
+        return apiNow(url);
 
-function fmt(t){ const d=new Date(t); return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
-function iso(){ return new Date().toISOString(); }
-function gSearchUrl(title){ return `https://www.google.com/search?q=${encodeURIComponent(title)}`; }
+      if (url.pathname === "/api/ratings")
+        return apiRatings(url);
 
-function badge(label, value, cls, href){
-  const inner = `<span>${label} ${value}</span>`;
-  return href ? `<a class="badge ${cls}" href="${href}" target="_blank" rel="noopener">${inner}</a>`
-              : `<span class="badge ${cls}">${inner}</span>`;
-}
+      if (url.pathname === "/api/probe")
+        return apiProbe(url);
 
-function ratingBadges(r){
-  if(!r) return '';
-  const out=[];
-  if(typeof r.imdb === 'number') out.push(badge("IMDb", r.imdb.toFixed(1), "imdb", r.imdbUrl||null));
-  if(typeof r.rtCritic === 'number') out.push(badge("RT Critic", r.rtCritic+"%", "rtc", r.rtUrl||null));
-  if(typeof r.rtUser === 'number') out.push(badge("RT User", r.rtUser+"%", "rtu", r.rtUrl||null));
-  if(typeof r.score === 'number') out.push(badge("Score", r.score.toFixed(1), "score", null));
-  return `<div class="badges">${out.join("")}</div>`;
-}
-
-function slotHtml(s){
-  if(!s) return `<div class="slot muted">Keine Daten</div>`;
-  const linkTitle = `<a class="title" href="${gSearchUrl(s.title)}" target="_blank" rel="noopener">${s.title}</a>`;
-  return `<div class="slot">
-    ${linkTitle}
-    <div class="time">${new Date(s.start).toLocaleDateString('de-DE',{weekday:'short'})} · ${fmt(s.start)}–${fmt(s.stop)}</div>
-    ${ratingBadges(s.ratings)}
-  </div>`;
-}
-
-async function load(){
-  setErr('');
-  const src = document.getElementById("source").value;
-  document.getElementById("stamp").textContent = "Lade…";
-  document.getElementById("grid").innerHTML = "";
-
-  try{
-    const r = await fetch(`${API}/api/now?source=${encodeURIComponent(src)}`);
-    if(!r.ok) throw new Error(`${r.status}`);
-    const data = await r.json();
-
-    document.getElementById("stamp").textContent = `Aktualisiert: ${new Date(data.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
-
-    const grid = document.getElementById("grid");
-    grid.innerHTML = data.items.map(item=>{
-      return `<div class="card">
-        <div class="row">
-          <div class="chname">${item.channel}</div>
-          <div class="no">#${item.no}</div>
-        </div>
-        ${slotHtml(item.now)}
-        ${Array.isArray(item.next) ? item.next.map(slotHtml).join("") : ""}
-      </div>`;
-    }).join("");
-
-    // Hinweis, falls Fallback
-    if((data.sourceUsed||"").includes("fallback")) {
-      setErr("Hinweis: Fallback-Daten – Quelle nicht erreichbar.");
+      return T("OK");
+    } catch (e) {
+      return J({ error: e?.message || "worker error" }, 500);
     }
-
-  }catch(e){
-    setErr("Ladefehler: " + e.message);
   }
-}
+};
 
-async function probe(){
-  setErr('');
-  const urls = [
+// ---- minimal Config (nur was wir brauchen) ----
+const OMDB_KEY = "a9a9973d"; // dein Key
+
+const EPG_SOURCES = {
+  auto: [
     "https://xmltv.info/de/epg.xml",
     "https://epg.pw/xmltv/epg_DE.xml"
-  ];
-  const results = [];
-  for(const u of urls){
+  ],
+  xmltv: ["https://xmltv.info/de/epg.xml"],
+  epgpw: ["https://epg.pw/xmltv/epg_DE.xml"]
+};
+
+// feste, sortierte Anzeige-Liste
+const CHANNELS = [
+  { no: 1,  name: "ARD (Das Erste)", aliases:["ard","das erste"] },
+  { no: 2,  name: "ZDF", aliases:["zdf"] },
+  { no: 3,  name: "RTL", aliases:["rtl"] },
+  { no: 4,  name: "ProSieben", aliases:["prosieben","pro sieben"] },
+  { no: 5,  name: "Sat.1", aliases:["sat1","sat.1"] },
+  { no: 6,  name: "SWR", aliases:["swr"] },
+  { no: 7,  name: "Sky Sport F1 (Formel 1)", aliases:["sky sport f1","formel 1"] },
+  { no: 8,  name: "Motorvision TV", aliases:["motorvision"] },
+  { no: 9,  name: "Sky Cinema Highlights", aliases:["sky cinema highlights"] },
+  { no: 10, name: "Sky Cinema Action", aliases:["sky cinema action"] },
+  { no: 11, name: "Sky Cinema Primera", aliases:["sky cinema primera","sky cinema hits","premiere"] },
+  { no: 12, name: "Sky Cinema Classic", aliases:["sky cinema classic","classics"] },
+  { no: 13, name: "Sky Cinema Family", aliases:["sky cinema family"] },
+  { no: 14, name: "Warner Bros. (Film & Serie)", aliases:["warner tv","warner tv film","warner tv serie"] },
+  { no: 15, name: "VOX", aliases:["vox"] },
+  { no: 16, name: "RTL Zwei", aliases:["rtl2","rtl ii","rtl zwei"] },
+  { no: 17, name: "Kabel Eins", aliases:["kabel eins","kabel1"] },
+  { no: 18, name: "Kabel Eins Doku", aliases:["kabel eins doku"] },
+  { no: 19, name: "BBC Food", aliases:["bbc food"] },
+  { no: 20, name: "DMAX", aliases:["dmax"] },
+  { no: 21, name: "BBC Top Gear", aliases:["top gear","bbc top gear"] },
+  { no: 22, name: "N24 Doku", aliases:["n24 doku","welt doku"] },
+  { no: 23, name: "Discovery Channel", aliases:["discovery channel","discovery"] },
+  { no: 24, name: "Sky Documentaries", aliases:["sky documentaries"] },
+  { no: 25, name: "History Channel", aliases:["history","history channel"] },
+  { no: 26, name: "Sky Nature", aliases:["sky nature"] },
+  { no: 27, name: "Terra Mater", aliases:["terra mater"] },
+  { no: 28, name: "National Geographic", aliases:["nat geo","national geographic"] },
+  { no: 29, name: "National Geo Wild", aliases:["nat geo wild"] },
+  { no: 30, name: "Animal Planet", aliases:["animal planet"] },
+  { no: 31, name: "Welt", aliases:["welt","n24"] },
+  { no: 32, name: "N-TV", aliases:["ntv","n-tv"] },
+  { no: 33, name: "Tagesschau24", aliases:["tagesschau24","tagesschau 24"] },
+  { no: 34, name: "Nick (Nickelodeon)", aliases:["nick","nickelodeon"] },
+  { no: 35, name: "MTV", aliases:["mtv"] }
+];
+
+// ---------- API: /api/now ----------
+async function apiNow(url){
+  const set = (url.searchParams.get("set")||"auto").toLowerCase();
+  const list = EPG_SOURCES[set] || EPG_SOURCES.auto;
+
+  const attempts = [];
+  let parsed=null, used=null;
+
+  for (const src of list){
     try{
-      const r = await fetch(`${API}/api/probe?url=${encodeURIComponent(u)}`);
-      const j = await r.json();
-      results.push(`${u} → ${j.status} (${j.ct||"-"})`);
+      const r = await fetch(src, { redirect:"follow" });
+      const ct = r.headers.get("content-type")||"";
+      const text = await r.text();
+      attempts.push({ src, ok:r.ok, status:r.status, ct, len:String(text.length) });
+      if (!r.ok) continue;
+      if (text.length > 50_000_000) { // 50MB guard
+        attempts.push({ src, ok:false, status:"TOO_LARGE", hint:">50MB" });
+        continue;
+      }
+      parsed = await parseXmlTv(text);
+      used = src;
+      break;
     }catch(e){
-      results.push(`${u} → ERROR ${e.message}`);
+      attempts.push({ src, ok:false, status:"NETWORK", hint:e?.message||"net" });
     }
   }
-  setErr(results.map(x=>`• ${x}`).join("<br>"));
+
+  if (!parsed){
+    // kleiner Fallback mit „Jetzt“ + 2 „Danach“
+    const items = CHANNELS.map(c=>({
+      no:c.no, channel:c.name,
+      now:{ title:"(Fallback) Programm", start:iso(), stop:iso(45) },
+      next:[ {title:"(Fallback) Danach 1", start:iso(45), stop:iso(90)},
+             {title:"(Fallback) Danach 2", start:iso(90), stop:iso(135)} ]
+    }));
+    return J({ ts:iso(), sourceUsed:"fallback", items, attempts });
+  }
+
+  const now = Date.now();
+  const items = CHANNELS.map(c=>{
+    const m = matchChannel(c, parsed.channels);
+    if (!m) return { no:c.no, channel:c.name };
+    const list = parsed.programmes.filter(p=>p.channel===m.id && p.start && p.stop)
+                                  .sort((a,b)=>a.start-b.start);
+    const cur = list.find(p=>p.start<=now && now<p.stop) || null;
+    const next = list.filter(p=>p.start>now).slice(0,2);
+    return {
+      no:c.no, channel:c.name,
+      now: cur ? { title:cur.title, start:new Date(cur.start).toISOString(), stop:new Date(cur.stop).toISOString() } : null,
+      next: next.map(n=>({ title:n.title, start:new Date(n.start).toISOString(), stop:new Date(n.stop).toISOString() }))
+    };
+  });
+
+  return J({ ts:iso(), sourceUsed:used, items, attempts });
 }
 
-function setErr(html){
-  document.getElementById("error").innerHTML = html ? `<div class="err">${html}</div>` : "";
+// ---------- API: /api/ratings ----------
+async function apiRatings(url){
+  const title = (url.searchParams.get("title")||"").trim();
+  if (!title) return J({ error:"Missing title" }, 400);
+
+  let imdb=null, rtCritic=null, rtUser=null;
+  const links = {};
+
+  try{
+    const omdb = `https://www.omdbapi.com/?apikey=${OMDB_KEY}&t=${encodeURIComponent(title)}&tomatoes=true`;
+    const r = await fetch(omdb, { redirect:"follow" });
+    const data = await r.json();
+
+    if (data?.Response === "True"){
+      if (data.imdbRating && data.imdbRating!=="N/A") imdb = numF(data.imdbRating);
+      if (data.tomatoMeter && data.tomatoMeter!=="N/A") rtCritic = numI(data.tomatoMeter);
+      if (data.tomatoUserMeter && data.tomatoUserMeter!=="N/A") rtUser = numI(data.tomatoUserMeter);
+
+      // optional aus Ratings-Array ergänzen
+      if (!rtCritic && Array.isArray(data.Ratings)){
+        const rt = data.Ratings.find(x=>x.Source==="Rotten Tomatoes");
+        if (rt?.Value) {
+          const m = /^(\d+)%$/.exec(rt.Value);
+          if (m) rtCritic = parseInt(m[1],10);
+        }
+      }
+
+      if (data.imdbID) links.imdb = `https://www.imdb.com/title/${data.imdbID}/`;
+      if (data.tomatoURL) links.rt = data.tomatoURL;
+    }
+  }catch(_){}
+
+  if (!links.imdb) links.imdb = gSite(title,"imdb.com");
+  if (!links.rt)    links.rt    = gSite(title,"rottentomatoes.com");
+
+  const parts=[];
+  if (rtCritic!=null) parts.push({w:0.15, v:rtCritic});
+  if (imdb!=null)     parts.push({w:0.15, v:imdb*10});
+  if (rtUser!=null)   parts.push({w:0.75, v:rtUser});
+
+  let score=null;
+  if (parts.length){
+    const w=sum(parts.map(p=>p.w));
+    const s=sum(parts.map(p=>p.w*p.v))/(w||1);
+    score = round1(s/10); // 0–100 → 0–10
+  }
+
+  return J({ ts:iso(), title, ratings:{ imdb, rtCritic, rtUser, score }, links });
 }
 
-// Initial
-load();
-// Auto-Refresh alle 5 Minuten
-setInterval(load, 300000);
-</script>
-</body>
-</html>
+// ---------- API: /api/probe ----------
+async function apiProbe(url){
+  const u = url.searchParams.get("url");
+  if (!u) return J({ error:"Missing url" }, 400);
+  try{
+    const r = await fetch(u, { redirect:"follow" });
+    const ct = r.headers.get("content-type")||"";
+    const txt = await r.text();
+    return J({
+      ts:iso(), url:u, status:r.status, ct,
+      ce:r.headers.get("content-encoding")||"",
+      len: txt ? String(txt.length) : "",
+      ok: r.ok, sample: txt.slice(0,200)
+    }, r.ok ? 200 : r.status);
+  }catch(e){
+    return J({ ts:iso(), url:u, status:"NETWORK", ok:false, sample:e?.message||"net" }, 502);
+  }
+}
+
+// ---------- helpers ----------
+function cors(){
+  return {
+    "access-control-allow-origin":"*",
+    "access-control-allow-methods":"GET,HEAD,OPTIONS",
+    "access-control-allow-headers":"*",
+    "access-control-max-age":"86400",
+    "content-type":"application/json"
+  };
+}
+function J(obj,code=200){ return new Response(JSON.stringify(obj),{ status:code, headers:cors() }); }
+function T(text,code=200){ return new Response(text,{ status:code, headers:{...cors(),"content-type":"text/plain; charset=utf-8"} }); }
+function iso(min=0){ return new Date(Date.now()+min*60*1000).toISOString(); }
+function numF(x){ const n=parseFloat(x); return Number.isFinite(n)?n:null; }
+function numI(x){ const n=parseInt(x,10); return Number.isFinite(n)?n:null; }
+function sum(a){ return a.reduce((s,v)=>s+v,0); }
+function round1(x){ return Math.round(x*10)/10; }
+function gSite(q,site){ return `https://www.google.com/search?q=${encodeURIComponent(q+" site:"+site)}`; }
+
+async function parseXmlTv(xml){
+  const channels=[], programmes=[];
+  // channels
+  const cre=/\<channel\s+id="([^"]+)"\>[\s\S]*?\<display-name[^>]*\>(?:\<\!\[CDATA\[)?([\s\S]*?)(?:\]\]\>)?\<\/display-name\>[\s\S]*?\<\/channel\>/gi;
+  let m; while((m=cre.exec(xml))!==null){ channels.push({ id:m[1], name:clean(m[2]) }); }
+  // programmes
+  const pre=/\<programme\s+start="([^"]+)"\s+stop="([^"]+)"\s+channel="([^"]+)"\>([\s\S]*?)\<\/programme\>/gi;
+  const tre=/\<title[^>]*\>(?:\<\!\[CDATA\[)?([\s\S]*?)(?:\]\]\>)?\<\/title\>/i;
+  let p; while((p=pre.exec(xml))!==null){
+    const start = parseXmltvDate(p[1]), stop = parseXmltvDate(p[2]);
+    const body = p[4]||""; const t = body.match(tre);
+    const title = t ? clean(t[1]) : "Ohne Titel";
+    if (Number.isFinite(start)&&Number.isFinite(stop)) programmes.push({ channel:p[3], start, stop, title });
+  }
+  return { channels, programmes };
+}
+function clean(s){ return (s||"").replace(/\s+/g," ").trim(); }
+function norm(s){ return (s||"").toLowerCase().replace(/\s+/g," ").trim(); }
+function matchChannel(entry, list){
+  let f = list.find(c=>norm(c.name)===norm(entry.name));
+  if (f) return f;
+  for (const a of entry.aliases){
+    f = list.find(c=>norm(c.name).includes(norm(a)) || norm(a).includes(norm(c.name)));
+    if (f) return f;
+  }
+  return list.find(c=>norm(c.name).includes(norm(entry.name))||norm(entry.name).includes(norm(c.name))) || null;
+}
+function parseXmltvDate(s){
+  const m = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([+\-]\d{4}|Z)?$/);
+  if (!m) return NaN;
+  const [_,Y,Mo,D,H,Mi,S,TZ]=m;
+  const baseMs = Date.parse(`${Y}-${Mo}-${D}T${H}:${Mi}:${S}Z`);
+  if (!TZ || TZ==="Z") return baseMs;
+  const sign = TZ.startsWith("-")?-1:1;
+  const th = parseInt(TZ.slice(1,3),10), tm = parseInt(TZ.slice(3,5),10);
+  return baseMs - sign*(th*60+tm)*60*1000;
+}
