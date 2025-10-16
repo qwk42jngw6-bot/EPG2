@@ -1,310 +1,162 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
-  <title>TV Programm</title>
-  <style>
-    :root{
-      --bg:#0f1419; --bg-card:#1e293b; --border:#334155;
-      --text:#e2e8f0; --muted:#94a3b8; --accent:#60a5fa;
-      --gold:#f5c518; --rt-red:#dc2626; --rt-green:#16a34a; --score-blue:#3b82f6;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif}
-    .wrap{max-width:1200px;margin:0 auto;padding:16px}
-    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
-    h1{margin:0;font-size:20px}
-    .clock{color:var(--muted);font-size:14px}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .btn{background:#0b1220;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px}
-    .btn.active{border-color:var(--accent);color:var(--accent)}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .hint{color:var(--muted);font-size:12px}
-    .debug-toggle{margin-left:8px;font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
-    .card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:12px}
-    .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
-    .chan{font-weight:600}
-    .no{background:#0b1220;border:1px solid var(--border);color:var(--accent);font-weight:600;padding:2px 8px;border-radius:999px;font-size:12px}
-    .now{margin:8px 0}
-    .title a{color:#fff;text-decoration:none}
-    .title a:hover{text-decoration:underline}
-    .time{color:var(--muted);font-size:12px;margin-top:2px}
-    .next{border-top:1px solid var(--border);padding-top:8px;margin-top:8px}
-    .next-item{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:13px;margin:4px 0}
-    .next-item .n-title a{color:#cbd5e1;text-decoration:none}
-    .next-item .n-title a:hover{text-decoration:underline}
-    .badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-    .badges.small .badge{font-size:10px;padding:2px 6px}
-    .badge{font-size:11px;padding:2px 6px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;border:1px solid transparent}
-    .b-imdb{background:var(--gold);color:#000}
-    .b-rtc{background:var(--rt-red);color:#fff}
-    .b-rtu{background:var(--rt-green);color:#fff}
-    .b-score{background:var(--score-blue);color:#fff}
-    .badge a{color:inherit;text-decoration:none}
-    .badge a:hover{text-decoration:underline}
-    .loading{padding:40px;text-align:center;color:var(--muted)}
-    .error{background:#7f1d1d;border:1px solid var(--rt-red);color:#fca5a5;border-radius:8px;padding:10px;margin-bottom:12px}
-    details.debug{background:#0b1220;border:1px dashed var(--border);border-radius:8px;padding:10px;margin-top:12px}
-    details.debug pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#cbd5e1;margin:0;max-height:260px;overflow:auto}
-    .footer{margin-top:16px;color:var(--muted);font-size:12px;display:flex;gap:8px;align-items:center}
-    .src-pill{background:#0b1220;border:1px solid var(--border);padding:4px 8px;border-radius:999px}
-    @media (max-width:680px){.row{flex-wrap:wrap}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TV Programm</title>
+<style>
+  :root{
+    --bg:#0f1419; --card:#1e293b; --border:#334155; --muted:#94a3b8; --text:#e2e8f0;
+    --gold:#f5c518; --red:#dc2626; --green:#16a34a; --blue:#3b82f6;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,system-ui,Segoe UI,Roboto,Helvetica,Arial;margin:0;padding:16px}
+  .wrap{max-width:1200px;margin:0 auto}
+  header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
+  h1{font-size:20px;margin:0}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  select,button{background:#111827;color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer}
+  button:hover,select:hover{border-color:#475569}
+  .stamp{color:var(--muted);font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .chname{font-weight:700}
+  .no{font-size:12px;color:#60a5fa;background:#1e40af;padding:2px 8px;border-radius:999px}
+  .slot{margin:8px 0;padding:8px;border:1px dashed var(--border);border-radius:8px}
+  .title{font-weight:600;cursor:pointer;text-decoration:none;color:var(--text)}
+  .time{font-size:12px;color:var(--muted);margin-top:2px}
+  .badges{margin-top:6px;display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font-size:11px;padding:2px 6px;border-radius:6px;display:inline-flex;gap:6px;align-items:center}
+  .imdb{background:var(--gold);color:#000}
+  .rtc{background:var(--red);color:#fff}
+  .rtu{background:var(--green);color:#fff}
+  .score{background:var(--blue);color:#fff}
+  .muted{opacity:.65}
+  .err{background:#7f1d1d;color:#fca5a5;border:1px solid var(--red);padding:10px;border-radius:8px;margin-bottom:12px}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>TV Programm</h1>
-        <div class="clock" id="clock">–:–</div>
-      </div>
-      <div class="controls">
-        <button class="btn" data-set="auto">Quelle: Auto</button>
-        <button class="btn" data-set="xmltv">Quelle: xmltv.info</button>
-        <button class="btn" data-set="epgpw">Quelle: epg.pw</button>
-        <button class="btn" id="reloadBtn">Neu laden</button>
-        <span class="hint">Titel anklicken ⇒ Google-Suche</span>
-        <span class="debug-toggle" id="debugToggle">Debug anzeigen</span>
-      </div>
-    </header>
-
-    <div id="errorBox" class="error" style="display:none"></div>
-    <div id="content" class="grid"></div>
-
-    <details class="debug" id="debugBox" style="display:none">
-      <summary>Debug</summary>
-      <pre id="debugPre"></pre>
-    </details>
-
-    <div class="footer">
-      <span>Quelle aktiv:</span>
-      <span class="src-pill" id="srcUsed">–</span>
-      <span>• Aktualisiert:</span>
-      <span id="ts">–</span>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>TV Programm</h1>
+      <div class="stamp" id="stamp">–</div>
     </div>
-  </div>
+    <div class="controls">
+      <select id="source">
+        <option value="auto">Quelle: Auto</option>
+        <option value="xmltv">Quelle: xmltv.info</option>
+        <option value="epgpw">Quelle: epg.pw</option>
+      </select>
+      <button id="reload">Neu laden</button>
+      <button id="probe">Quellen testen</button>
+    </div>
+  </header>
 
-  <script>
-    // ====== CONFIG ======
-    const WORKER_BASE = "https://waterfall-epg.w2gy9ymm7y.workers.dev";
+  <div id="error"></div>
+  <div id="grid" class="grid"></div>
+</div>
 
-    // ====== UI state ======
-    const clockEl = document.getElementById("clock");
-    const errorBox = document.getElementById("errorBox");
-    const contentEl = document.getElementById("content");
-    const debugBox = document.getElementById("debugBox");
-    const debugPre = document.getElementById("debugPre");
-    const srcUsedEl = document.getElementById("srcUsed");
-    const tsEl = document.getElementById("ts");
-    const reloadBtn = document.getElementById("reloadBtn");
-    const debugToggle = document.getElementById("debugToggle");
+<script>
+const API = "https://waterfall-epg.w2gy9ymm7y.workers.dev"; // <--- DEIN WORKER-URL
 
-    let currentSet = "auto";
+document.getElementById("reload").onclick = load;
+document.getElementById("probe").onclick = probe;
+document.getElementById("source").onchange = load;
 
-    // ====== Clock ======
-    function tickClock(){
-      const d = new Date();
-      clockEl.textContent = d.toLocaleTimeString("de-DE", {hour:"2-digit",minute:"2-digit"});
-    }
-    tickClock(); setInterval(tickClock, 1000);
+function fmt(t){ const d=new Date(t); return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}); }
+function iso(){ return new Date().toISOString(); }
+function gSearchUrl(title){ return `https://www.google.com/search?q=${encodeURIComponent(title)}`; }
 
-    // ====== Helpers ======
-    function fmtTime(iso){
-      if(!iso) return "–";
-      const d = new Date(iso);
-      return d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"});
-    }
-    function a(href, text, title){
-      const t = title ? ` title="${title.replace(/"/g,"&quot;")}"` : "";
-      return `<a href="${href}" target="_blank" rel="noopener"${t}>${text}</a>`;
-    }
-    function gSearch(q){
-      return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
-    }
-    function clearError(){ errorBox.style.display="none"; errorBox.textContent=""; }
-    function showError(msg){ errorBox.style.display="block"; errorBox.textContent = msg; }
+function badge(label, value, cls, href){
+  const inner = `<span>${label} ${value}</span>`;
+  return href ? `<a class="badge ${cls}" href="${href}" target="_blank" rel="noopener">${inner}</a>`
+              : `<span class="badge ${cls}">${inner}</span>`;
+}
 
-    // ====== Source buttons ======
-    document.querySelectorAll(".btn[data-set]").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        document.querySelectorAll(".btn[data-set]").forEach(b=>b.classList.remove("active"));
-        btn.classList.add("active");
-        currentSet = btn.dataset.set;
-        loadNow();
-      });
-    });
-    document.querySelector('.btn[data-set="auto"]').classList.add("active");
-    reloadBtn.addEventListener("click", loadNow);
-    debugToggle.addEventListener("click", ()=>{
-      const visible = debugBox.style.display !== "none";
-      debugBox.style.display = visible ? "none" : "block";
-    });
+function ratingBadges(r){
+  if(!r) return '';
+  const out=[];
+  if(typeof r.imdb === 'number') out.push(badge("IMDb", r.imdb.toFixed(1), "imdb", r.imdbUrl||null));
+  if(typeof r.rtCritic === 'number') out.push(badge("RT Critic", r.rtCritic+"%", "rtc", r.rtUrl||null));
+  if(typeof r.rtUser === 'number') out.push(badge("RT User", r.rtUser+"%", "rtu", r.rtUrl||null));
+  if(typeof r.score === 'number') out.push(badge("Score", r.score.toFixed(1), "score", null));
+  return `<div class="badges">${out.join("")}</div>`;
+}
 
-    // ====== Ratings cache + request pool (für „Jetzt“ + „Nächste“) ======
-    const ratingsCache = new Map();
-    const queue = [];
-    let running = 0;
-    const MAX_CONCURRENCY = 6;
+function slotHtml(s){
+  if(!s) return `<div class="slot muted">Keine Daten</div>`;
+  const linkTitle = `<a class="title" href="${gSearchUrl(s.title)}" target="_blank" rel="noopener">${s.title}</a>`;
+  return `<div class="slot">
+    ${linkTitle}
+    <div class="time">${new Date(s.start).toLocaleDateString('de-DE',{weekday:'short'})} · ${fmt(s.start)}–${fmt(s.stop)}</div>
+    ${ratingBadges(s.ratings)}
+  </div>`;
+}
 
-    function scheduleRating(title, boxEl){
-      if(!title || title==="–" || title==="/") return;
-      const key = title.toLowerCase();
-      if (ratingsCache.has(key)) {
-        const data = ratingsCache.get(key);
-        if (data && !data.error) boxEl.innerHTML = buildBadgesHTML(data, /*small*/boxEl.classList.contains('small'));
-        return;
-      }
-      queue.push({title, boxEl});
-      pumpQueue();
-    }
+async function load(){
+  setErr('');
+  const src = document.getElementById("source").value;
+  document.getElementById("stamp").textContent = "Lade…";
+  document.getElementById("grid").innerHTML = "";
 
-    async function pumpQueue(){
-      while (running < MAX_CONCURRENCY && queue.length){
-        const job = queue.shift();
-        running++;
-        fetchRatings(job.title)
-          .then(data=>{
-            if (data && !data.error) {
-              job.boxEl.innerHTML = buildBadgesHTML(data, job.boxEl.classList.contains('small'));
-            }
-          })
-          .catch(()=>{})
-          .finally(()=>{ running--; pumpQueue(); });
-      }
-    }
+  try{
+    const r = await fetch(`${API}/api/now?source=${encodeURIComponent(src)}`);
+    if(!r.ok) throw new Error(`${r.status}`);
+    const data = await r.json();
 
-    async function fetchRatings(title){
-      const key = title.toLowerCase();
-      if (ratingsCache.has(key)) return ratingsCache.get(key);
-      try{
-        const r = await fetch(`${WORKER_BASE}/api/ratings?title=${encodeURIComponent(title)}&cb=${Date.now()}`);
-        if(!r.ok) throw new Error("Ratings HTTP "+r.status);
-        const data = await r.json();
-        ratingsCache.set(key, data);
-        return data;
-      }catch(e){
-        const err = { error: e.message };
-        ratingsCache.set(key, err);
-        return err;
-      }
-    }
+    document.getElementById("stamp").textContent = `Aktualisiert: ${new Date(data.ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
 
-    function buildBadgesHTML(data, small=false){
-      if (!data || data.error) return "";
-      const r = data.ratings || {};
-      const L = data.links || {};
-      const parts = [];
-
-      if (typeof r.imdb === "number"){
-        const label = `IMDb ${r.imdb.toFixed(1)}`;
-        const href = L.imdb || `https://www.google.com/search?q=${encodeURIComponent(`IMDb ${data.title}`)}`;
-        parts.push(`<span class="badge b-imdb${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="IMDb öffnen">${label}</a></span>`);
-      }
-      if (typeof r.rtCritic === "number"){
-        const label = `RT Kritiker ${r.rtCritic}%`;
-        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
-        parts.push(`<span class="badge b-rtc${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
-      }
-      if (typeof r.rtUser === "number"){
-        const label = `RT User ${r.rtUser}%`;
-        const href = L.rt || `https://www.google.com/search?q=${encodeURIComponent(`Rotten Tomatoes ${data.title}`)}`;
-        parts.push(`<span class="badge b-rtu${small?'':''}"><a href="${href}" target="_blank" rel="noopener" title="Rotten Tomatoes öffnen">${label}</a></span>`);
-      }
-      if (typeof r.score === "number"){
-        const label = `Score ${r.score.toFixed(1)}/10`;
-        parts.push(`<span class="badge b-score${small?'':''}">${label}</span>`);
-      }
-      return parts.join("");
-    }
-
-    // ====== Build one card (JETZT + NÄCHSTE inkl. badges) ======
-    function cardHTML(item){
-      const now = item.now;
-      const next = Array.isArray(item.next) ? item.next : [];
-      const nowTitle = now?.title || "–";
-
-      const next1 = next[0];
-      const next2 = next[1];
-
-      return `
-        <div class="card" data-no="${item.no||999}">
-          <div class="row">
-            <div class="chan">${item.channel||"Unbekannt"}</div>
-            <div class="no">${item.no ?? "–"}</div>
-          </div>
-
-          <div class="now">
-            <div class="title">${a(gSearch(nowTitle), nowTitle, "Google-Suche öffnen")}</div>
-            ${now ? `<div class="time">${fmtTime(now.start)} – ${fmtTime(now.stop)}</div>` : `<div class="time">Keine aktuelle Sendung</div>`}
-            <div class="badges" data-title="${nowTitle}"></div>
-          </div>
-
-          <div class="next">
-            ${next1 ? `
-              <div class="next-item">
-                <span class="n-title">${a(gSearch(next1.title), next1.title, "Google-Suche öffnen")}</span>
-                <span>${fmtTime(next1.start)}</span>
-              </div>
-              <div class="badges small" data-title="${next1.title}"></div>
-            ` : `<div class="next-item"><span>–</span><span>–</span></div>`}
-
-            ${next2 ? `
-              <div class="next-item">
-                <span class="n-title">${a(gSearch(next2.title), next2.title, "Google-Suche öffnen")}</span>
-                <span>${fmtTime(next2.start)}</span>
-              </div>
-              <div class="badges small" data-title="${next2.title}"></div>
-            ` : `<div class="next-item"><span>–</span><span>–</span></div>`}
-          </div>
+    const grid = document.getElementById("grid");
+    grid.innerHTML = data.items.map(item=>{
+      return `<div class="card">
+        <div class="row">
+          <div class="chname">${item.channel}</div>
+          <div class="no">#${item.no}</div>
         </div>
-      `;
+        ${slotHtml(item.now)}
+        ${Array.isArray(item.next) ? item.next.map(slotHtml).join("") : ""}
+      </div>`;
+    }).join("");
+
+    // Hinweis, falls Fallback
+    if((data.sourceUsed||"").includes("fallback")) {
+      setErr("Hinweis: Fallback-Daten – Quelle nicht erreichbar.");
     }
 
-    // ====== Render all ======
-    function renderNow(payload){
-      const items = Array.isArray(payload.items) ? payload.items.slice() : [];
-      items.sort((a,b)=>(a.no??999)-(b.no??999));
+  }catch(e){
+    setErr("Ladefehler: " + e.message);
+  }
+}
 
-      if(items.length===0){
-        contentEl.innerHTML = `<div class="loading">Keine Senderdaten verfügbar.</div>`;
-        return;
-      }
-
-      contentEl.innerHTML = items.map(cardHTML).join("");
-
-      // Footer & Debug
-      srcUsedEl.textContent = payload.sourceUsed || "–";
-      tsEl.textContent = payload.ts ? new Date(payload.ts).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit",second:"2-digit"}) : "–";
-      const dbg = { set: currentSet, sourceUsed: payload.sourceUsed, attempts: payload.attempts||[] };
-      debugPre.textContent = JSON.stringify(dbg, null, 2);
-
-      // Ratings für alle badges (Jetzt + Nächste) — dedupliziert + gepoolt
-      document.querySelectorAll(".badges[data-title]").forEach((box)=>{
-        const title = box.getAttribute("data-title")?.trim();
-        scheduleRating(title, box);
-      });
+async function probe(){
+  setErr('');
+  const urls = [
+    "https://xmltv.info/de/epg.xml",
+    "https://epg.pw/xmltv/epg_DE.xml"
+  ];
+  const results = [];
+  for(const u of urls){
+    try{
+      const r = await fetch(`${API}/api/probe?url=${encodeURIComponent(u)}`);
+      const j = await r.json();
+      results.push(`${u} → ${j.status} (${j.ct||"-"})`);
+    }catch(e){
+      results.push(`${u} → ERROR ${e.message}`);
     }
+  }
+  setErr(results.map(x=>`• ${x}`).join("<br>"));
+}
 
-    // ====== Load NOW ======
-    async function loadNow(){
-      clearError();
-      contentEl.innerHTML = `<div class="loading">Lade TV-Programm…</div>`;
-      try{
-        const url = `${WORKER_BASE}/api/now?set=${encodeURIComponent(currentSet)}&cb=${Date.now()}`;
-        const r = await fetch(url);
-        if(!r.ok) throw new Error(`HTTP ${r.status}`);
-        const data = await r.json();
-        renderNow(data);
-      }catch(e){
-        showError(`Ladefehler: ${e.message||e}`);
-        contentEl.innerHTML = "";
-      }
-    }
+function setErr(html){
+  document.getElementById("error").innerHTML = html ? `<div class="err">${html}</div>` : "";
+}
 
-    // ====== Init ======
-    loadNow();
-  </script>
+// Initial
+load();
+// Auto-Refresh alle 5 Minuten
+setInterval(load, 300000);
+</script>
 </body>
 </html>
